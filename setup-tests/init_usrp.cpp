@@ -8,12 +8,13 @@
 #include <boost/thread.hpp>
 #include <iostream>
 
+//https://kb.ettus.com/Getting_Started_with_UHD_and_C%2B%2B
 int UHD_SAFE_MAIN(int argc, char *argv[])
 {
     uhd::set_thread_priority_safe();
 
-    std::string device_args("addr=192.168.10.2");
-    std::string subdev("A:0");
+    std::string device_args("serial=31993E7");
+    std::string subdev("A:A");
     std::string ant("TX/RX");
     std::string ref("internal");
 
