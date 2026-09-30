@@ -40,7 +40,7 @@ set(UHD_BOOST_REQUIRED_COMPONENTS
 include(UHDBoost)
 
 ### Make the executable #######################################################
-add_executable(init_usrp init_usrp.cpp)
+add_executable(init_usrp test.cpp)
 
 set(CMAKE_BUILD_TYPE "Release")
 message(STATUS "******************************************************************************")
@@ -54,7 +54,8 @@ message(STATUS "****************************************************************
 # anything else we need (in this case, some Boost libraries):
 if(NOT UHD_USE_STATIC_LIBS)
     message(STATUS "Linking against shared UHD library.")
-    target_link_libraries(init_usrp PUBLIC UHD::uhd Boost::program_options)
+    target_include_directories(init_usrp PUBLIC ${UHD_INCLUDE_DIRS})
+    target_link_libraries(init_usrp PUBLIC ${UHD_LIBRARIES} Boost::program_options)
 # Shared library case: All we need to do is link against the library, and
 # anything else we need (in this case, some Boost libraries):
 else(NOT UHD_USE_STATIC_LIBS)
