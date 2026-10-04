@@ -75,22 +75,6 @@ target_link_libraries(sdr_phy
         #sdr_common
 )
 
-# Radio / UHD layer
-add_library(sdr_radio STATIC
-    src/radio/usrp_tx.cpp
-    src/radio/usrp_rx.cpp
-)
-
-target_include_directories(sdr_radio
-    PUBLIC
-        ${PROJECT_INCLUDE_DIR}
-        ${UHD_INCLUDE_DIRS}
-)
-
-target_link_libraries(sdr_radio
-    PUBLIC
-        ${UHD_LIBRARIES}
-)
 
 # Transmitter
 add_executable(sdr_tx
@@ -102,7 +86,6 @@ target_link_libraries(sdr_tx
         #sdr_common
         sdr_mac
         sdr_phy
-        sdr_radio
         Boost::program_options
 )
 
@@ -116,7 +99,6 @@ target_link_libraries(sdr_rx
         #sdr_common
         sdr_mac
         sdr_phy
-        sdr_radio
         Boost::program_options
 )
 
@@ -135,12 +117,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
 
     target_compile_options(sdr_phy PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
-
-    target_compile_options(sdr_radio PRIVATE
         -Wall
         -Wextra
         -Wpedantic

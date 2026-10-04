@@ -1,26 +1,39 @@
 #include "mac/packet_builder.h"
 #include "mac/validation.h"
+#include "mac/preamble.h"
 
-PacketBuilder::PacketBuilder(uint16_t starting_sequence): m_sequence_(starting_sequence)
+PacketBuilder::PacketBuilder(uint16_t starting_sequence) : m_sequence_(starting_sequence)
 {
 }
 
-Packet PacketBuilder::build(std::vector<uint8_t> payload, uint8_t flags)
+std::vector<Packet> PacketBuilder::build(const std::vector<uint8_t> &data, uint8_t flags)
 {
-    Packet packet;
+    std::vector<Packet> packets;
 
-    packet.preamble = 0;
+    const std::size_t fragment_count = std::max<std::size_t>(1, (data.size() + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE);
+    packets.reserve(fragment_count);
 
-    packet.header.sequence = m_sequence_++;
-    packet.header.length_flags = make_length_flags(payload.size(), flags);
+    for (std::size_t i = 0; i < fragment_count; ++i)
+    {
+        const std::size_t offset = i * MAX_PAYLOAD_SIZE;
 
-    //packet.header.length_flags = (static_cast<uint16_t>(payload.size()) << 4) && flags;
+        const std::size_t remaining_data = data.size() - offset;
 
-    packet.payload.assign(payload.begin(), payload.end());
+        const std::size_t size = std::min(remaining_data, MAX_PAYLOAD_SIZE);
 
-    packet.checksum = 0;
+        Packet packet;
 
-    return packet;
+        packet.preamble = BARKER_PREAMBLE;
+
+        packet.header.sequence = m_sequence_++;
+        packet.header.length_flags = make_length_flags(size, flags);
+
+        packet.payload.assign(data.begin() + offset, data.begin() + offset + size);
+
+        packet.checksum = Validator::compute_checksum(packet.payload);
+
+        packets.push_back(std::move(packet));
+    }
+
+    return packets;
 }
-
-
