@@ -4,12 +4,10 @@
 #include <span>
 #include <vector>
 
-
-class Validator {
+class Validator
+{
 public:
-    uint32_t compute_checksum();
-    
+    static uint32_t compute_checksum(const std::vector<uint8_t> &data);
+
 private:
 };
-
-
