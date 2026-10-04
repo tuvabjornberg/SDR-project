@@ -18,7 +18,6 @@ struct Packet
 };
 
 constexpr uint16_t FLAG_MASK = 0x000F;
-constexpr uint16_t LENGTH_MASK = 0xFFF0;
 
 inline uint16_t make_length_flags(uint16_t length, uint8_t flags)
 {
