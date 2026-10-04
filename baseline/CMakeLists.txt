@@ -6,20 +6,30 @@ project(SDRProject
 )
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+    set(CMAKE_EXE_LINKER_FLAGS "-lthr ${CMAKE_EXE_LINKER_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-stdlib=libc++ ${CMAKE_CXX_FLAGS}")
 endif()
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+### Set up build environment ##################################################
+# Choose a static or shared-library build (shared is default, and static will
+# probably need some special care!)
+# Set this to ON in order to link a static build of UHD:
+option(UHD_USE_STATIC_LIBS OFF)
 
 find_package(UHD 4.9.0 REQUIRED)
 
-find_package(Boost 1.66 REQUIRED COMPONENTS
+include(UHDMinDepVersions)
+
+set(UHD_BOOST_REQUIRED_COMPONENTS
     program_options
 )
+include(UHDBoost)
+
+#find_package(Boost 1.66 REQUIRED COMPONENTS
+#    program_options
+#)
 
 message(STATUS "UHD version: ${UHD_VERSION}")
 message(STATUS "UHD libraries: ${UHD_LIBRARIES}")
@@ -33,7 +43,7 @@ set(PROJECT_INCLUDE_DIR
 add_library(sdr_mac STATIC
     src/mac/packet_builder.cpp
     src/mac/packet_parser.cpp
-    src/mac/crc.cpp
+    src/mac/validation.cpp
 )
 
 target_include_directories(sdr_mac
@@ -43,7 +53,7 @@ target_include_directories(sdr_mac
 
 target_link_libraries(sdr_mac
     PUBLIC
-        sdr_common
+        #sdr_common
 )
 
 # PHY layer
@@ -62,7 +72,7 @@ target_include_directories(sdr_phy
 
 target_link_libraries(sdr_phy
     PUBLIC
-        sdr_common
+        #sdr_common
 )
 
 # Radio / UHD layer
@@ -89,7 +99,7 @@ add_executable(sdr_tx
 
 target_link_libraries(sdr_tx
     PRIVATE
-        sdr_common
+        #sdr_common
         sdr_mac
         sdr_phy
         sdr_radio
@@ -103,7 +113,7 @@ add_executable(sdr_rx
 
 target_link_libraries(sdr_rx
     PRIVATE
-        sdr_common
+        #sdr_common
         sdr_mac
         sdr_phy
         sdr_radio
@@ -112,11 +122,11 @@ target_link_libraries(sdr_rx
 
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(sdr_common PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
+    #target_compile_options(sdr_common PRIVATE
+    #    -Wall
+    #    -Wextra
+    #    -Wpedantic
+    #)
 
     target_compile_options(sdr_mac PRIVATE
         -Wall
