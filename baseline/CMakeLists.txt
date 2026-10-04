@@ -140,3 +140,37 @@ install(TARGETS
     sdr_rx
     RUNTIME DESTINATION bin
 )
+
+# Tests
+option(BUILD_TESTS "Build tests" ON)
+
+if(BUILD_TESTS)
+
+    enable_testing()
+
+    add_executable(test_modulator
+        tests/test_modulator.cpp
+    )
+
+    target_link_libraries(test_modulator
+        PRIVATE
+            sdr_phy
+    )
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+
+        target_compile_options(test_modulator PRIVATE
+            -Wall
+            -Wextra
+            -Wpedantic
+        )
+
+    endif()
+
+    add_test(
+        NAME modulator
+        COMMAND test_modulator
+    )
+
+endif()
+

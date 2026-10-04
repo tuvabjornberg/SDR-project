@@ -37,3 +37,38 @@ std::vector<Packet> PacketBuilder::build(const std::vector<uint8_t> &data, uint8
 
     return packets;
 }
+
+std::vector<uint8_t> PacketBuilder::packet_to_bits(const Packet &packet)
+{
+    std::vector<uint8_t> bits;
+
+    for (int i = 31; i >= 0; --i)
+    {
+        bits.push_back((packet.preamble >> i) & 1);
+    }
+
+    const auto *header_bytes = reinterpret_cast<const uint8_t *>(&packet.header);
+
+    for (std::size_t i = 0; i < sizeof(PacketHeader); ++i)
+    {
+        for (int bit = 7; bit >= 0; --bit)
+        {
+            bits.push_back((header_bytes[i] >> bit) & 1);
+        }
+    }
+
+    for (uint8_t byte : packet.payload)
+    {
+        for (int bit = 7; bit >= 0; --bit)
+        {
+            bits.push_back((byte >> bit) & 1);
+        }
+    }
+
+    for (int i = 31; i >= 0; --i)
+    {
+        bits.push_back((packet.checksum >> i) & 1);
+    }
+
+    return bits;
+}
