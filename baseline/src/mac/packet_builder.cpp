@@ -1,7 +1,7 @@
 #include "mac/packet_builder.h"
-
 #include "mac/preamble.h"
 #include "mac/validation.h"
+#include "common/config.h"
 
 PacketBuilder::PacketBuilder(uint16_t starting_sequence) : m_sequence_(starting_sequence) {}
 

@@ -1,6 +1,7 @@
 #include "mac/packet_builder.h"
 #include "phy/filter.h"
 #include "phy/modulator.h"
+#include "common/config.h"
 
 #include <cmath>
 #include <cstdint>
@@ -8,21 +9,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
-// Packet Builder
-static constexpr std::size_t MAX_PAYLOAD_SIZE = 512;
-
-// Modulator
-static constexpr uint32_t SAMPLE_RATE = 2000000; // samples/sec
-static constexpr uint32_t SYMBOL_RATE = 250000;  // symbols/sec
-static_assert(SAMPLE_RATE % SYMBOL_RATE == 0,
-              "SAMPLE_RATE must be an integer multiple of SYMBOL_RATE");
-static constexpr uint32_t SAMPLES_PER_SYMBOL = SAMPLE_RATE / SYMBOL_RATE;
-
-// Filter
-static constexpr double ROLL_OFF_FACTOR = 0.35;
-static constexpr int FILTER_SPAN = 8; // filter span in symbols
-static constexpr double GAIN = 1.0;
 
 int main() {
     PacketBuilder builder;
@@ -69,7 +55,7 @@ int main() {
 
         RRCFilter rrc_filter;
         samples = rrc_filter.filter(
-            samples, rrc_filter.root_raised_cosine(GAIN, SAMPLE_RATE, SYMBOL_RATE, ROLL_OFF_FACTOR,
+            samples, rrc_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
                                                    FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
 
         std::cout << "\nRRC Filter\n";
