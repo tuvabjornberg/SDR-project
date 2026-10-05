@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 project(SDRProject
     VERSION 0.1.0
     LANGUAGES CXX
@@ -62,7 +64,7 @@ add_library(sdr_phy STATIC
     src/phy/demodulator.cpp
     src/phy/synchronizer.cpp
     src/phy/pulse_shaper.cpp
-    src/phy/matched_filter.cpp
+    src/phy/filter.cpp
 )
 
 target_include_directories(sdr_phy
