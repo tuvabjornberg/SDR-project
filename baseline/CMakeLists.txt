@@ -41,6 +41,8 @@ set(PROJECT_INCLUDE_DIR
     ${PROJECT_SOURCE_DIR}/include
 )
 
+include_directories(${CMAKE_SOURCE_DIR})
+
 # MAC layer
 add_library(sdr_mac STATIC
     src/mac/packet_builder.cpp
@@ -55,7 +57,6 @@ target_include_directories(sdr_mac
 
 target_link_libraries(sdr_mac
     PUBLIC
-        #sdr_common
 )
 
 # PHY layer
@@ -74,7 +75,6 @@ target_include_directories(sdr_phy
 
 target_link_libraries(sdr_phy
     PUBLIC
-        #sdr_common
 )
 
 
@@ -85,7 +85,6 @@ add_executable(sdr_tx
 
 target_link_libraries(sdr_tx
     PRIVATE
-        #sdr_common
         sdr_mac
         sdr_phy
         Boost::program_options
@@ -98,7 +97,6 @@ add_executable(sdr_rx
 
 target_link_libraries(sdr_rx
     PRIVATE
-        #sdr_common
         sdr_mac
         sdr_phy
         Boost::program_options
@@ -106,11 +104,6 @@ target_link_libraries(sdr_rx
 
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    #target_compile_options(sdr_common PRIVATE
-    #    -Wall
-    #    -Wextra
-    #    -Wpedantic
-    #)
 
     target_compile_options(sdr_mac PRIVATE
         -Wall

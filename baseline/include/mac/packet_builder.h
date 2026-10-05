@@ -15,6 +15,4 @@ class PacketBuilder {
 
   private:
     uint16_t m_sequence_;
-
-    static constexpr std::size_t MAX_PAYLOAD_SIZE = 512;
 };
