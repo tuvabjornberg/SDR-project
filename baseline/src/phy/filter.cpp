@@ -50,13 +50,13 @@ std::vector<float> RRCFilter::root_raised_cosine(double gain, double sampling_fr
 
 std::vector<std::complex<float>> RRCFilter::filter(const std::vector<std::complex<float>>& input,
                                                    const std::vector<float>& taps) {
-    std::vector<std::complex<float>> output(input.size());
+    std::vector<std::complex<float>> output(input.size() + taps.size() - 1);
 
-    for (std::size_t n = 0; n < input.size(); ++n) {
+    for (std::size_t n = 0; n < output.size(); ++n) {
         std::complex<float> sum = 0.0f;
 
         for (std::size_t k = 0; k < taps.size(); ++k) {
-            if (n >= k)
+            if (n >= k && n - k < input.size())
                 sum += input[n - k] * taps[k];
         }
 

@@ -1,7 +1,8 @@
 #include "mac/packet_builder.h"
+
+#include "common/config.h"
 #include "mac/preamble.h"
 #include "mac/validation.h"
-#include "common/config.h"
 
 PacketBuilder::PacketBuilder(uint16_t starting_sequence) : m_sequence_(starting_sequence) {}
 
@@ -10,6 +11,7 @@ std::vector<Packet> PacketBuilder::build(const std::vector<uint8_t>& data, uint8
 
     const std::size_t fragment_count =
         std::max<std::size_t>(1, (data.size() + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE);
+
     packets.reserve(fragment_count);
 
     for (std::size_t i = 0; i < fragment_count; ++i) {
