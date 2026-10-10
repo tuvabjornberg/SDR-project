@@ -15,6 +15,7 @@
 class Transmitter {
   public:
     Transmitter();
+    Transmitter(uhd::usrp::multi_usrp::sptr usrp);
 
     size_t send(std::vector<std::complex<float>> samples);
 
