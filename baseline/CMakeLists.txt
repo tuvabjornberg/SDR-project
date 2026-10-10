@@ -80,6 +80,7 @@ target_link_libraries(phy
 # Radio layer
 add_library(radio STATIC
     src/radio/transmitter.cpp
+    src/radio/receiver.cpp
 )
 
 target_include_directories(radio
