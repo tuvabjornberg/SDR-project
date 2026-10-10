@@ -44,23 +44,23 @@ set(PROJECT_INCLUDE_DIR
 include_directories(${CMAKE_SOURCE_DIR})
 
 # MAC layer
-add_library(sdr_mac STATIC
+add_library(mac STATIC
     src/mac/packet_builder.cpp
     src/mac/packet_parser.cpp
     src/mac/validation.cpp
 )
 
-target_include_directories(sdr_mac
+target_include_directories(mac
     PUBLIC
         ${PROJECT_INCLUDE_DIR}
 )
 
-target_link_libraries(sdr_mac
+target_link_libraries(mac
     PUBLIC
 )
 
 # PHY layer
-add_library(sdr_phy STATIC
+add_library(phy STATIC
     src/phy/modulator.cpp
     src/phy/demodulator.cpp
     src/phy/synchronizer.cpp
@@ -68,15 +68,33 @@ add_library(sdr_phy STATIC
     src/phy/filter.cpp
 )
 
-target_include_directories(sdr_phy
+target_include_directories(phy
     PUBLIC
         ${PROJECT_INCLUDE_DIR}
 )
 
-target_link_libraries(sdr_phy
+target_link_libraries(phy
     PUBLIC
 )
 
+# Radio layer
+add_library(radio STATIC
+    src/radio/transmitter.cpp
+)
+
+target_include_directories(radio
+    PUBLIC
+        ${PROJECT_INCLUDE_DIR}
+        ${UHD_INCLUDE_DIRS}
+)
+
+target_link_libraries(radio
+    PUBLIC
+    ${UHD_LIBRARIES}
+    ${UHD_STATIC_LIB_LINK_FLAG}
+    ${UHD_STATIC_LIB_DEPS}
+    Boost::program_options
+)
 
 # Transmitter
 add_executable(sdr_tx
@@ -85,9 +103,9 @@ add_executable(sdr_tx
 
 target_link_libraries(sdr_tx
     PRIVATE
-        sdr_mac
-        sdr_phy
-        Boost::program_options
+        mac
+        phy
+        radio
 )
 
 # Receiver
@@ -97,21 +115,21 @@ add_executable(sdr_rx
 
 target_link_libraries(sdr_rx
     PRIVATE
-        sdr_mac
-        sdr_phy
-        Boost::program_options
+        mac
+        phy
+        radio
 )
 
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 
-    target_compile_options(sdr_mac PRIVATE
+    target_compile_options(mac PRIVATE
         -Wall
         -Wextra
         -Wpedantic
     )
 
-    target_compile_options(sdr_phy PRIVATE
+    target_compile_options(phy PRIVATE
         -Wall
         -Wextra
         -Wpedantic
@@ -149,7 +167,7 @@ if(BUILD_TESTS)
 
     target_link_libraries(test_modulator
         PRIVATE
-            sdr_phy
+            phy
     )
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
