@@ -1,16 +1,22 @@
+#include "common/config.h"
 #include "mac/packet_builder.h"
 #include "phy/filter.h"
 #include "phy/modulator.h"
-#include "common/config.h"
+#include "radio/transmitter.h"
 
+#include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <vector>
 
 int main() {
+    Transmitter tx; // configure tx
+
     PacketBuilder builder;
     const std::string message = "Hello B210!";
 
@@ -20,8 +26,11 @@ int main() {
 
     auto packets = builder.build(payload, flags);
 
+    Modulator modulator;
+    RRCFilter rrc_filter;
+
     for (const auto& packet : packets) {
-        std::cout << "Packet built successfully\n";
+        std::cout << "Packet built\n";
         std::cout << "------------------------\n";
         std::cout << "Preamble: 0x" << std::hex << std::setw(8) << std::setfill('0')
                   << packet.preamble << std::dec << std::endl;
@@ -40,7 +49,6 @@ int main() {
 
         auto bit_vector = builder.packet_to_bits(packet);
 
-        Modulator modulator;
         auto samples = modulator.bpsk_modulate(bit_vector, SAMPLES_PER_SYMBOL);
 
         std::cout << "\nBPSK Modulation\n";
@@ -53,7 +61,6 @@ int main() {
             std::cout << i << ": " << samples[i].real() << " + j" << samples[i].imag() << std::endl;
         }
 
-        RRCFilter rrc_filter;
         samples = rrc_filter.filter(
             samples, rrc_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
                                                    FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
@@ -77,6 +84,11 @@ int main() {
             power += std::norm(sample);
         }
 
+        if (max_magnitude > 0.7f) {
+            for (auto& sample : samples)
+                sample *= 0.7f / max_magnitude;
+        }
+
         double average_power = power / samples.size();
         double rms = std::sqrt(average_power);
 
@@ -85,6 +97,12 @@ int main() {
         std::cout << "Max magnitude:  " << max_magnitude << '\n';
         std::cout << "Average power:  " << average_power << '\n';
         std::cout << "RMS magnitude:  " << rms << '\n';
+
+        std::cout << "\nTransmission" << std::endl;
+        std::cout << "------------------------" << std::endl;
+        size_t num_sent = tx.send(samples);
+        std::cout << "Transmitted " << num_sent << " samples\n";
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // tmp, change/remove
     }
 
     return 0;
