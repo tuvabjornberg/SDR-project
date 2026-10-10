@@ -31,6 +31,22 @@ Transmitter::Transmitter() {
     m_tx_streamer = usrp->get_tx_stream(stream_args);
 }
 
+Transmitter::Transmitter(uhd::usrp::multi_usrp::sptr usrp) : m_usrp(std::move(usrp)) {
+    m_usrp->set_tx_rate(TX_RATE);
+    m_usrp->set_tx_freq(TX_FREQ);
+    m_usrp->set_tx_gain(TX_GAIN);
+    m_usrp->set_tx_bandwidth(TX_BANDWIDTH);
+    m_usrp->set_tx_antenna(TX_ANT);
+
+    std::cout << "TX rate: " << m_usrp->get_tx_rate() << '\n';
+    std::cout << "TX freq: " << m_usrp->get_tx_freq() << '\n';
+    std::cout << "TX gain: " << m_usrp->get_tx_gain() << '\n';
+    std::cout << "TX antenna: " << m_usrp->get_tx_antenna() << '\n';
+
+    uhd::stream_args_t stream_args("fc32", "sc16");
+    m_tx_streamer = m_usrp->get_tx_stream(stream_args);
+}
+
 size_t Transmitter::send(std::vector<std::complex<float>> samples) {
     uhd::tx_metadata_t md;
     md.start_of_burst = true;

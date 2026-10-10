@@ -15,6 +15,7 @@
 class Receiver {
   public:
     Receiver();
+    Receiver(uhd::usrp::multi_usrp::sptr usrp);
 
     std::vector<std::complex<float>> receive(std::size_t num_samples);
 

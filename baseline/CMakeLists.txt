@@ -121,6 +121,18 @@ target_link_libraries(sdr_rx
         radio
 )
 
+# TX/RX combination
+add_executable(sdr_txrx
+    src/main_txrx.cpp
+)
+
+target_link_libraries(sdr_txrx
+    PRIVATE
+        mac
+        phy
+        radio
+)
+
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 

@@ -4,14 +4,13 @@
 #include "mac/preamble.h"
 
 bool Synchronizer::matches_preamble(std::size_t offset, bool inverted) const {
-    constexpr std::size_t PREAMBLE_BITS = 32;
 
     for (std::size_t i = 0; i < PREAMBLE_BITS; ++i) {
         const std::size_t sample_index = offset + i * SAMPLES_PER_SYMBOL;
 
         const bool received_bit = m_buffer[sample_index].real() >= 0.0f;
 
-        const bool expected_bit = ((BARKER_PREAMBLE >> (31 - i)) & 1U) != 0;
+        const bool expected_bit = ((BARKER_PREAMBLE >> (PREAMBLE_BITS - 1 - i)) & 1U) != 0;
 
         if (received_bit != (expected_bit != inverted))
             return false;
@@ -21,8 +20,6 @@ bool Synchronizer::matches_preamble(std::size_t offset, bool inverted) const {
 }
 
 std::vector<std::size_t> Synchronizer::process(const std::vector<std::complex<float>>& samples) {
-    constexpr std::size_t PREAMBLE_BITS = 32;
-    constexpr std::size_t PREAMBLE_SAMPLES = (PREAMBLE_BITS - 1) * SAMPLES_PER_SYMBOL + 1;
 
     m_buffer.insert(m_buffer.end(), samples.begin(), samples.end());
 

@@ -32,6 +32,22 @@ Receiver::Receiver() {
     m_rx_streamer = usrp->get_rx_stream(stream_args);
 }
 
+Receiver::Receiver(uhd::usrp::multi_usrp::sptr usrp) : m_usrp(std::move(usrp)) {
+    m_usrp->set_rx_rate(RX_RATE);
+    m_usrp->set_rx_freq(RX_FREQ);
+    m_usrp->set_rx_gain(RX_GAIN);
+    m_usrp->set_rx_bandwidth(RX_BANDWIDTH);
+    m_usrp->set_rx_antenna(RX_ANT);
+
+    std::cout << "RX rate: " << m_usrp->get_rx_rate() << '\n';
+    std::cout << "RX freq: " << m_usrp->get_rx_freq() << '\n';
+    std::cout << "RX gain: " << m_usrp->get_rx_gain() << '\n';
+    std::cout << "RX antenna: " << m_usrp->get_rx_antenna() << '\n';
+
+    uhd::stream_args_t stream_args("fc32", "sc16");
+    m_rx_streamer = m_usrp->get_rx_stream(stream_args);
+}
+
 std::vector<std::complex<float>> Receiver::receive(std::size_t num_samples) {
     std::vector<std::complex<float>> samples(num_samples);
     uhd::rx_metadata_t md;
