@@ -1,0 +1,25 @@
+BasedOnStyle: LLVM
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+ColumnLimit: 100
+
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: Empty
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+NamespaceIndentation: None
+
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+
+SpaceBeforeParens: ControlStatements
+
+DerivePointerAlignment: false
+
+# C++17
+Standard: c++17
