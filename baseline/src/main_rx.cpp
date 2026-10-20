@@ -1,57 +1,52 @@
 #include "common/config.h"
-#include "phy/filter.h"
-#include "phy/synchronizer.h"
+#include "common/settings.h"
+#include "mac/preamble.h"
+#include "pipeline/rx_pipeline.h"
 #include "radio/receiver.h"
 
+#include <chrono>
 #include <cmath>
+#include <complex>
 #include <iostream>
+#include <string>
 #include <vector>
 
 int main() {
+    std::cout << "========================================" << std::endl;
+    std::cout << "Receiver" << std::endl;
+    std::cout << "========================================" << std::endl;
     Receiver rx;
-    RRCFilter rrc;
-    Synchronizer synchronizer;
-
-    const auto taps = rrc.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
-                                             FILTER_SPAN * SAMPLES_PER_SYMBOL + 1);
-    // For 65 taps keep the previous 64 input samples.
-    const std::size_t history_size = taps.size() - 1;
-    std::vector<std::complex<float>> history(history_size, {0.0f, 0.0f});
 
     rx.start();
 
-    while (true) {
-        auto samples = rx.receive(4096); // TODO Look into chunck size
+    std::vector<std::complex<float>> captured_samples;
 
-        if (samples.empty()) {
-            continue;
-        }
-        std::cout << "Received " << samples.size() << " samples\n";
+    auto start = std::chrono::steady_clock::now();
 
-        // Join previous samples so filtering continuous
-        std::vector<std::complex<float>> input;
-        input.reserve(history.size() + samples.size());
-        input.insert(input.end(), history.begin(), history.end());
-        input.insert(input.end(), samples.begin(), samples.end());
+    while (std::chrono::steady_clock::now() - start <
+           std::chrono::seconds(settings::RX_CAPTURE_SECONDS)) {
 
-        auto filtered = rrc.filter(input, taps);
+        auto chunk = rx.receive(settings::RX_CHUNK_SIZE);
 
-        // Keep only output corresponding to the new chunk
-        std::vector<std::complex<float>> filtered_samples(filtered.begin() + history_size,
-                                                          filtered.end());
-        std::cout << "Filtered " << filtered_samples.size() << " samples\n";
-
-        // Update raw history for the next chunk
-        if (input.size() >= history_size) {
-            history.assign(input.end() - history_size, input.end());
-        }
-
-        auto detections = synchronizer.process(filtered_samples);
-
-        for (const auto offset : detections) {
-            std::cout << "Preamble detected at filtered sample offset " << offset << '\n';
-        }
+        captured_samples.insert(captured_samples.end(), chunk.samples.begin(), chunk.samples.end());
     }
+
+    rx.stop();
+
+    std::cout << "[RX] Receiving complete, captured samples: " << captured_samples.size()
+              << std::endl;
+    if (captured_samples.empty()) {
+        std::cerr << "[RX] FAIL: No samples received\n";
+        return 1;
+    }
+
+    RxPipeline pipeline;
+
+    auto parsed_packets = pipeline.decode_packets(captured_samples);
+    auto message = pipeline.packet_to_msg(parsed_packets);
+
+    std::cout << "[RX] Received payload size: " << message.size() << " bytes" << std::endl;
+    std::cout << "[RX] Received: " << std::string(message.begin(), message.end()) << std::endl;
 
     return 0;
 }

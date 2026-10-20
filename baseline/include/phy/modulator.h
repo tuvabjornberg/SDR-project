@@ -12,3 +12,10 @@ class Modulator {
 
   private:
 };
+
+class Demodulator {
+  public:
+    std::vector<uint8_t> bpsk_demodulate(const std::vector<std::complex<float>>& samples,
+                                         std::size_t samples_per_symbol,
+                                         std::size_t sampling_offset = 0) const;
+};

@@ -33,40 +33,69 @@ Receiver::Receiver() {
 }
 
 Receiver::Receiver(uhd::usrp::multi_usrp::sptr usrp) : m_usrp(std::move(usrp)) {
-    m_usrp->set_rx_rate(RX_RATE);
-    m_usrp->set_rx_freq(RX_FREQ);
-    m_usrp->set_rx_gain(RX_GAIN);
-    m_usrp->set_rx_bandwidth(RX_BANDWIDTH);
-    m_usrp->set_rx_antenna(RX_ANT);
 
-    std::cout << "RX rate: " << m_usrp->get_rx_rate() << '\n';
-    std::cout << "RX freq: " << m_usrp->get_rx_freq() << '\n';
-    std::cout << "RX gain: " << m_usrp->get_rx_gain() << '\n';
-    std::cout << "RX antenna: " << m_usrp->get_rx_antenna() << '\n';
+    const size_t rx_chan = 1;
+
+    m_usrp->set_rx_rate(RX_RATE, rx_chan);
+    m_usrp->set_rx_freq(RX_FREQ, rx_chan);
+    m_usrp->set_rx_gain(RX_GAIN, rx_chan);
+    m_usrp->set_rx_bandwidth(RX_BANDWIDTH, rx_chan);
+    m_usrp->set_rx_antenna(RX_ANT, rx_chan);
+    // m_usrp->set_rx_dc_offset(false, rx_chan);
+    // m_usrp->set_rx_iq_balance(false, rx_chan);
+
+    std::cout << "RX rate: " << m_usrp->get_rx_rate(rx_chan) << '\n';
+    std::cout << "RX freq: " << m_usrp->get_rx_freq(rx_chan) << '\n';
+    std::cout << "RX gain: " << m_usrp->get_rx_gain(rx_chan) << '\n';
+    std::cout << "RX antenna: " << m_usrp->get_rx_antenna(rx_chan) << '\n';
 
     uhd::stream_args_t stream_args("fc32", "sc16");
+    stream_args.channels = {rx_chan};
     m_rx_streamer = m_usrp->get_rx_stream(stream_args);
 }
 
-std::vector<std::complex<float>> Receiver::receive(std::size_t num_samples) {
-    std::vector<std::complex<float>> samples(num_samples);
+RxChunk Receiver::receive(std::size_t num_samples) {
+    RxChunk chunk;
+    chunk.samples.resize(num_samples);
+
     uhd::rx_metadata_t md;
 
-    std::size_t num_received = m_rx_streamer->recv(samples.data(), samples.size(), md);
+    const double timeout = 1.0;
 
-    if (md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE) {
+    const std::size_t num_received =
+        m_rx_streamer->recv(chunk.samples.data(), chunk.samples.size(), md, 1.0);
+
+    switch (md.error_code) {
+    case uhd::rx_metadata_t::ERROR_CODE_NONE:
+        break;
+
+    case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
+        std::cerr << "[WARNING] RX overflow: samples were lost\n";
+        return {};
+
+    case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT:
+        std::cerr << "[WARNING] RX timeout\n";
+        return {};
+
+    default:
         throw std::runtime_error("RX error: " + md.strerror());
     }
 
-    samples.resize(num_received);
-
-    return samples;
+    chunk.samples.resize(num_received);
+    chunk.timestamp = md.time_spec.get_real_secs();
+    return chunk;
 }
 
 void Receiver::start() {
     uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
 
     stream_cmd.stream_now = true;
+
+    m_rx_streamer->issue_stream_cmd(stream_cmd);
+}
+
+void Receiver::stop() {
+    uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS);
 
     m_rx_streamer->issue_stream_cmd(stream_cmd);
 }

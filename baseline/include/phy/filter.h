@@ -10,6 +10,7 @@ class RRCFilter {
 
     std::vector<std::complex<float>> filter(const std::vector<std::complex<float>>& input,
                                             const std::vector<float>& taps);
+    void reset();
 
   private:
     std::vector<float> taps;
