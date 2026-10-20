@@ -12,14 +12,20 @@
 #include <uhd/utils/thread.hpp>
 #include <vector>
 
+struct RxChunk {
+    double timestamp;
+    std::vector<std::complex<float>> samples;
+};
+
 class Receiver {
   public:
     Receiver();
     Receiver(uhd::usrp::multi_usrp::sptr usrp);
 
-    std::vector<std::complex<float>> receive(std::size_t num_samples);
+    RxChunk receive(std::size_t num_samples);
 
     void start();
+    void stop();
 
   private:
     uhd::usrp::multi_usrp::sptr m_usrp;

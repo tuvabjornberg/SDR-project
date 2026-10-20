@@ -14,7 +14,7 @@ Transmitter::Transmitter() {
 
     // always select the subdevice first, the channel mapping affects the other settings
     std::cout << boost::format("subdev set to: %f") % TX_SUBDEV << std::endl;
-    usrp->set_rx_subdev_spec(TX_SUBDEV);
+    usrp->set_tx_subdev_spec(TX_SUBDEV);
     std::cout << boost::format("Using Device: %s") % usrp->get_pp_string() << std::endl;
 
     usrp->set_tx_rate(TX_RATE);
@@ -52,6 +52,15 @@ size_t Transmitter::send(std::vector<std::complex<float>> samples) {
     md.start_of_burst = true;
     md.end_of_burst = true;
     md.has_time_spec = false;
+
+    uhd::async_metadata_t am;
+    if (m_tx_streamer->recv_async_msg(am, 0.05)) {
+        if (am.event_code != uhd::async_metadata_t::EVENT_CODE_BURST_ACK)
+            std::cerr << "[TX async] event code " << int(am.event_code)
+                      << " (underflow/seq error?)\n";
+    } else {
+        std::cerr << "[TX async] no ack\n";
+    }
 
     return m_tx_streamer->send(samples.data(), samples.size(), md);
 }

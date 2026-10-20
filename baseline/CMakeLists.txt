@@ -45,8 +45,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 
 # MAC layer
 add_library(mac STATIC
-    src/mac/packet_builder.cpp
-    src/mac/packet_parser.cpp
+    src/mac/packet.cpp
     src/mac/validation.cpp
 )
 
@@ -62,9 +61,7 @@ target_link_libraries(mac
 # PHY layer
 add_library(phy STATIC
     src/phy/modulator.cpp
-    src/phy/demodulator.cpp
     src/phy/synchronizer.cpp
-    src/phy/pulse_shaper.cpp
     src/phy/filter.cpp
 )
 
@@ -97,6 +94,23 @@ target_link_libraries(radio
     Boost::program_options
 )
 
+# Pipeline layer
+add_library(pipeline STATIC
+    src/pipeline/tx_pipeline.cpp
+    src/pipeline/rx_pipeline.cpp
+)
+
+target_include_directories(pipeline
+    PUBLIC
+        ${PROJECT_INCLUDE_DIR}
+)
+
+target_link_libraries(pipeline
+    PUBLIC
+    mac
+    phy
+)
+
 # Transmitter
 add_executable(sdr_tx
     src/main_tx.cpp
@@ -107,6 +121,7 @@ target_link_libraries(sdr_tx
         mac
         phy
         radio
+        pipeline
 )
 
 # Receiver
@@ -119,6 +134,7 @@ target_link_libraries(sdr_rx
         mac
         phy
         radio
+        pipeline
 )
 
 # TX/RX combination
@@ -131,41 +147,32 @@ target_link_libraries(sdr_txrx
         mac
         phy
         radio
+        pipeline
 )
 
+ #Packet performance test
+add_executable(packet_test
+    tests/packet_test.cpp
+)
+
+target_link_libraries(packet_test
+    PRIVATE
+        mac
+        phy
+        radio
+        pipeline
+)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-
-    target_compile_options(mac PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
-
-    target_compile_options(phy PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
-
-    target_compile_options(sdr_tx PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
-
-    target_compile_options(sdr_rx PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-    )
+    foreach(target mac phy sdr_tx sdr_rx sdr_txrx packet_test)
+        target_compile_options(${target} PRIVATE
+            -Wall
+            -Wextra
+            -Wpedantic
+        )
+    endforeach()
 endif()
 
-install(TARGETS
-    sdr_tx
-    sdr_rx
-    RUNTIME DESTINATION bin
-)
 
 # Tests
 option(BUILD_TESTS "Build tests" ON)
@@ -174,18 +181,24 @@ if(BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(test_modulator
-        tests/test_modulator.cpp
+    add_executable(test_main
+        tests/test_main.cpp
     )
 
-    target_link_libraries(test_modulator
+    target_link_libraries(test_main
         PRIVATE
             phy
+            mac
+            pipeline
+            ${UHD_LIBRARIES}
+            ${UHD_STATIC_LIB_LINK_FLAG}
+            ${UHD_STATIC_LIB_DEPS}
+            Boost::program_options
     )
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 
-        target_compile_options(test_modulator PRIVATE
+        target_compile_options(test_main PRIVATE
             -Wall
             -Wextra
             -Wpedantic
@@ -194,8 +207,8 @@ if(BUILD_TESTS)
     endif()
 
     add_test(
-        NAME modulator
-        COMMAND test_modulator
+        NAME main
+        COMMAND test_main
     )
 
 endif()

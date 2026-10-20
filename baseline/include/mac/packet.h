@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 struct PacketHeader {
@@ -8,7 +9,7 @@ struct PacketHeader {
     uint16_t length_flags; // [15:4] = length, [3:0] = flags
 };
 
-struct Packet {
+struct PacketStruct {
     uint32_t preamble;
     PacketHeader header;
     std::vector<uint8_t> payload;
@@ -28,3 +29,17 @@ inline uint16_t get_length(const PacketHeader& header) {
 inline uint8_t get_flags(const PacketHeader& header) {
     return static_cast<uint8_t>(header.length_flags & FLAG_MASK);
 }
+
+class Packet {
+  public:
+    explicit Packet(uint16_t starting_sequence = 0);
+
+    std::vector<PacketStruct> build(const std::vector<uint8_t>& data, uint8_t flags);
+
+    std::optional<PacketStruct> parse(const std::vector<uint8_t>& raw_bits,
+                                      bool* checksum_ok = nullptr);
+    std::vector<uint8_t> packet_to_bits(const PacketStruct& packet);
+
+  private:
+    uint16_t m_sequence;
+};
