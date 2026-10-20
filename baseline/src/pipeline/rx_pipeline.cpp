@@ -58,6 +58,15 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
     RRCFilter rx_filter;
     Synchronizer synchronizer;
 
+    constexpr double CFO_HZ = 1780.0; // measured: RX sees TX this far high
+
+    std::vector<std::complex<float>> corrected(captured_samples.size());
+    const double w = -2.0 * M_PI * CFO_HZ / SAMPLE_FREQ; // SAMPLE_FREQ = 2e6
+    for (std::size_t n = 0; n < captured_samples.size(); ++n) {
+        const double ph = w * static_cast<double>(n);
+        corrected[n] = captured_samples[n] * std::complex<float>(std::cos(ph), std::sin(ph));
+    }
+
 #if VERBOSE
     double raw_power = 0.0;
     float raw_max = 0.0f;
@@ -102,7 +111,7 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
 #endif
 
     auto filtered_samples = rx_filter.filter(
-        captured_samples,
+        corrected,
         rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
                                      FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
 

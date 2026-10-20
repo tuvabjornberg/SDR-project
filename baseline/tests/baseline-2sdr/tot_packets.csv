@@ -1,0 +1,2 @@
+num_packets,payload_size,interval_ms,packets_tx,packets_detected,packets_decoded,packets_received,packets_lost,pdr,per,bit_errors,bits_compared,ber,rx_overflows,cpu_user,cpu_system
+200,32,20,200,114,61,61,139,0.305,0.695,3370,29184,0.115474,0,2.54089,1.77833
