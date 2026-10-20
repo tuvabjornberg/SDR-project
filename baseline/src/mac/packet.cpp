@@ -98,8 +98,7 @@ std::vector<uint8_t> Packet::packet_to_bits(const PacketStruct& packet) {
     return bits;
 }
 
-std::optional<PacketStruct> Packet::parse(const std::vector<uint8_t>& raw_bits, bool* checksum_ok) {
-    std::vector<uint8_t> bits = raw_bits;
+std::optional<PacketStruct> Packet::parse(const std::vector<uint8_t>& bits, bool* checksum_ok) {
     // whiten(bits, PREAMBLE_SIZE);
 
     if (bits.size() < MIN_PACKET_SIZE) {
@@ -128,19 +127,13 @@ std::optional<PacketStruct> Packet::parse(const std::vector<uint8_t>& raw_bits, 
     };
 
     uint32_t preamble = 0;
+    uint32_t sequence = 0;
+    uint32_t length_flags = 0;
 
     if (!read_bits(PREAMBLE_SIZE, preamble)) {
         std::cerr << "[Parser]: failed to read preamble\n";
         return std::nullopt;
     }
-
-    if (preamble != BARKER_PREAMBLE) {
-        std::cerr << "[Parser]: invalid preamble, Expected: 0x" << std::hex << BARKER_PREAMBLE
-                  << ", Got: 0x" << preamble << std::endl;
-        return std::nullopt;
-    }
-
-    uint32_t sequence = 0, length_flags = 0;
 
     if (!read_bits(16, sequence) || !read_bits(16, length_flags)) {
         std::cerr << "[Parser]: incomplete header\n";
@@ -151,11 +144,30 @@ std::optional<PacketStruct> Packet::parse(const std::vector<uint8_t>& raw_bits, 
     header.sequence = static_cast<uint16_t>(sequence);
     header.length_flags = static_cast<uint16_t>(length_flags);
 
+    if (preamble != BARKER_PREAMBLE) {
+        std::cerr << "[Parser]: invalid preamble"
+                  << ", Sequence: " << header.sequence << ", Expected: 0x" << std::hex
+                  << BARKER_PREAMBLE << ", Got: 0x" << preamble << std::dec << '\n';
+        return std::nullopt;
+    }
+
+    // uint32_t sequence = 0, length_flags = 0;
+
+    // if (!read_bits(16, sequence) || !read_bits(16, length_flags)) {
+    //     std::cerr << "[Parser]: incomplete header\n";
+    //     return std::nullopt;
+    // }
+
+    // PacketHeader header{};
+    // header.sequence = static_cast<uint16_t>(sequence);
+    // header.length_flags = static_cast<uint16_t>(length_flags);
+
     const uint16_t payload_length = get_length(header);
 
     if (payload_length > MAX_PAYLOAD_SIZE) {
-        std::cerr << "[Parser]: payload length exceeds maximum, Expected <= " << MAX_PAYLOAD_SIZE
-                  << ", Got: " << payload_length << std::endl;
+        std::cerr << "[Parser]: payload length exceeds maximum"
+                  << ", Sequence: " << header.sequence << ", Expected <= " << MAX_PAYLOAD_SIZE
+                  << ", Got: " << payload_length << '\n';
         return std::nullopt;
     }
 

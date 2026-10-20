@@ -225,15 +225,19 @@ int main() {
     std::cout << "Payload size:   " << config.payload_size << " bytes\n";
     std::cout << "Packet interval:" << config.packet_interval_ms << " ms\n";
 
-    // USRP
-    auto usrp = uhd::usrp::multi_usrp::make(TX_SERIAL);
+    // When running with 1 SDR
+    // auto usrp = uhd::usrp::multi_usrp::make(TX_SERIAL);
 
-    usrp->set_clock_source("internal");
-    usrp->set_tx_subdev_spec(TX_SUBDEV);
-    usrp->set_rx_subdev_spec(RX_SUBDEV);
+    // usrp->set_clock_source("internal");
+    // usrp->set_tx_subdev_spec(TX_SUBDEV);
+    // usrp->set_rx_subdev_spec(RX_SUBDEV);
 
-    Transmitter tx(usrp);
-    Receiver rx(usrp);
+    // Transmitter tx(usrp);
+    // Receiver rx(usrp);
+
+    // When running with 2 SDRs
+    Transmitter tx;
+    Receiver rx;
 
     // Artificial payload
     std::vector<std::vector<uint8_t>> transmitted_payloads;
@@ -244,7 +248,8 @@ int main() {
 
     // RX
     std::vector<std::complex<float>> captured_samples;
-    captured_samples.reserve(config.num_packets * config.payload_size * SAMPLES_PER_SYMBOL);
+    // captured_samples.reserve(config.num_packets * config.payload_size * SAMPLES_PER_SYMBOL);
+    captured_samples.reserve(settings::RX_CAPTURE_SECONDS * 2e6 * 1.1);
 
     rx.start();
 

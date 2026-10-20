@@ -22,15 +22,30 @@
 
 //     return samples;
 // }
+// std::vector<std::complex<float>> Modulator::bpsk_modulate(const std::vector<uint8_t>& bits,
+//                                                           std::size_t samples_per_symbol) {
+//     std::vector<std::complex<float>> samples(bits.size() * samples_per_symbol,
+//                                              std::complex<float>{0.0f, 0.0f});
+
+//     for (std::size_t i = 0; i < bits.size(); ++i) {
+//         samples[i * samples_per_symbol] = {bits[i] ? 1.0f : -1.0f, 0.0f};
+//     }
+
+//     return samples;
+// }
+
 std::vector<std::complex<float>> Modulator::bpsk_modulate(const std::vector<uint8_t>& bits,
                                                           std::size_t samples_per_symbol) {
     std::vector<std::complex<float>> samples(bits.size() * samples_per_symbol,
                                              std::complex<float>{0.0f, 0.0f});
 
     for (std::size_t i = 0; i < bits.size(); ++i) {
-        samples[i * samples_per_symbol] = {bits[i] ? 1.0f : -1.0f, 0.0f};
-    }
+        const float symbol = bits[i] ? 1.0f : -1.0f;
 
+        for (std::size_t j = 0; j < samples_per_symbol; ++j) {
+            samples[i * samples_per_symbol + j] = {symbol, 0.0f};
+        }
+    }
     return samples;
 }
 
