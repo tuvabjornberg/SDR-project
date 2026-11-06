@@ -1,0 +1,127 @@
+========================================
+B210 PACKET TEST
+========================================
+Packets:        200
+Payload size:   32 bytes
+Packet interval:10 ms
+Creating the usrp device with: serial=31993E7...
+[INFO] [UHD] linux; GNU C++ version 13.3.0; Boost_108300; UHD_4.9.0.HEAD-0-g006d7f76
+[INFO] [B200] Loading firmware image: /usr/local/share/uhd/images/usrp_b200_fw.hex...
+[INFO] [B200] Detected Device: B210
+[INFO] [B200] Loading FPGA image: /usr/local/share/uhd/images/usrp_b210_fpga.bin...
+[INFO] [B200] Operating over USB 3.
+[INFO] [B200] Detecting internal GPSDO.... 
+[INFO] [GPS] No GPSDO found
+[INFO] [B200] Initialize CODEC control...
+[INFO] [B200] Initialize Radio control...
+[INFO] [B200] Performing register loopback test... 
+[INFO] [B200] Register loopback test passed
+[INFO] [B200] Performing register loopback test... 
+[INFO] [B200] Register loopback test passed
+[INFO] [B200] Setting master clock rate selection to 'automatic'.
+[INFO] [B200] Asking for clock rate 16.000000 MHz... 
+[INFO] [B200] Actually got clock rate 16.000000 MHz.
+Lock mboard clocks: internal
+subdev set to: A:A
+Using Device: Single USRP:
+  Device: B-Series Device
+  Mboard 0: B210
+  RX Channel: 0
+    RX DSP: 0
+    RX Dboard: A
+    RX Subdev: FE-RX2
+  RX Channel: 1
+    RX DSP: 1
+    RX Dboard: A
+    RX Subdev: FE-RX1
+  TX Channel: 0
+    TX DSP: 0
+    TX Dboard: A
+    TX Subdev: FE-TX2
+
+[INFO] [B200] Asking for clock rate 32.000000 MHz... 
+[INFO] [B200] Actually got clock rate 32.000000 MHz.
+TX rate: 2e+06
+TX freq: 2.45e+09
+TX gain: 60
+Creating the usrp device with: serial=31993F0...
+[INFO] [B200] Detected Device: B210
+[INFO] [B200] Loading FPGA image: /usr/local/share/uhd/images/usrp_b210_fpga.bin...
+[INFO] [B200] Operating over USB 2.
+[INFO] [B200] Detecting internal GPSDO.... 
+[INFO] [GPS] No GPSDO found
+[INFO] [B200] Initialize CODEC control...
+[INFO] [B200] Initialize Radio control...
+[INFO] [B200] Performing register loopback test... 
+[INFO] [B200] Register loopback test passed
+[INFO] [B200] Performing register loopback test... 
+[INFO] [B200] Register loopback test passed
+[INFO] [B200] Setting master clock rate selection to 'automatic'.
+[INFO] [B200] Asking for clock rate 16.000000 MHz... 
+[INFO] [B200] Actually got clock rate 16.000000 MHz.
+Lock mboard clocks: internal
+subdev set to: A:A
+Using Device: Single USRP:
+  Device: B-Series Device
+  Mboard 0: B210
+  RX Channel: 0
+    RX DSP: 0
+    RX Dboard: A
+    RX Subdev: FE-RX2
+  TX Channel: 0
+    TX DSP: 0
+    TX Dboard: A
+    TX Subdev: FE-TX2
+  TX Channel: 1
+    TX DSP: 1
+    TX Dboard: A
+    TX Subdev: FE-TX1
+
+[INFO] [B200] Asking for clock rate 32.000000 MHz... 
+[INFO] [B200] Actually got clock rate 32.000000 MHz.
+RX rate: 2e+06
+RX freq: 2.45e+09
+RX gain: 40
+[TX async] no ack
+[OK] Transmission complete
+
+[WARNING] RX timeout
+[WARNING] RX timeout
+[WARNING] RX timeout
+[RX] Preambles detected: 198
+[RX] Checksum failure, seq 19, metric 0.945412
+[RX] Checksum failure, seq 60, metric 0.94455
+[RX] Checksum failure, seq 168, metric 0.942821
+[RX] Successfully decoded packets: 195
+
+========================================
+TEST RESULTS
+========================================
+Packets transmitted: 200
+Packets detected:    198
+Packets decoded:     195
+Packets lost:        5
+
+PDR: 97.5 %
+PER: 2.5 %
+
+Bit errors: 46
+Bits compared: 50688
+BER: 0.000907513
+
+RX overflows: 0
+
+CPU user time:   9.92819 s
+CPU system time: 10.0462 s
+CPU total time:  19.9744 s
+CPU time/packet: 0.0998718 s
+========================================
+Received:
+0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 56 57 58 59 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 
+
+RX breakdown:
+Preambles detected: 198
+Successfully decoded: 195
+Checksum failures: 3
+Parser failures: 0
+Invalid offsets: 0
