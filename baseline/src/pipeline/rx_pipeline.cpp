@@ -114,7 +114,8 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
         corrected, rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
                                                 FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
     // auto filtered_samples = rx_filter.filter(
-    //     captured_samples, rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
+    //     captured_samples, rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE,
+    //     ROLL_OFF_FACTOR,
     //                                             FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
 
 #if VERBOSE
@@ -157,8 +158,15 @@ RxPipeline::demod_parse(const std::vector<std::complex<float>>& filtered_samples
         }
 
         const std::size_t end = std::min(filtered_samples.size(), detection.offset + max_samples);
-        const std::vector<std::complex<float>> aligned_samples(
+        // const std::vector<std::complex<float>> aligned_samples(
+        // filtered_samples.begin() + detection.offset, filtered_samples.begin() + end);
+        std::vector<std::complex<float>> aligned_samples(
             filtered_samples.begin() + detection.offset, filtered_samples.begin() + end);
+        for (std::size_t n = 0; n < aligned_samples.size(); ++n) {
+            const double ph =
+                detection.phase + 2.0 * M_PI * detection.cfo_hz * double(n) / SAMPLE_FREQ;
+            aligned_samples[n] *= std::complex<float>(std::cos(-ph), std::sin(-ph));
+        }
 
 #if VERBOSE
         std::cout << "\tDecoding packet " << packet_index << " at sample offset " << sync_offset
@@ -210,11 +218,11 @@ RxPipeline::demod_parse(const std::vector<std::complex<float>>& filtered_samples
         std::cout << '\n';
 #endif
 
-        if (detection.inverted) {
-            for (auto& bit : bits) {
-                bit ^= 1U;
-            }
-        }
+        // if (detection.inverted) {
+        //     for (auto& bit : bits) {
+        //         bit ^= 1U;
+        //     }
+        // }
 
 #if VERBOSE
         std::cout << "[After inversion]\n";
@@ -261,6 +269,8 @@ RxPipeline::demod_parse(const std::vector<std::complex<float>>& filtered_samples
         }
         if (!ok) {
             ++m_stats.checksum_failures;
+            std::cerr << "[RX] Checksum failure, seq " << parsed_packet->header.sequence
+                      << ", metric " << detection.metric << '\n';
             m_rejected.push_back(*parsed_packet);
             continue;
         }
