@@ -111,9 +111,11 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
 #endif
 
     auto filtered_samples = rx_filter.filter(
-        corrected,
-        rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
-                                     FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
+        corrected, rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
+                                                FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
+    // auto filtered_samples = rx_filter.filter(
+    //     captured_samples, rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
+    //                                             FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
 
 #if VERBOSE
     std::cout << "\tFiltered samples: " << filtered_samples.size() << std::endl;
@@ -124,6 +126,7 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
     if (detections.empty()) {
         std::cerr << "[RX] FAIL: No preamble detected\n";
     }
+    m_stats.preambles_detected = detections.size();
     std::cout << "[RX] Preambles detected: " << detections.size() << '\n';
 
     std::vector<PacketStruct> received_packets = demod_parse(filtered_samples, detections);
@@ -132,7 +135,7 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
               [](const PacketStruct& a, const PacketStruct& b) {
                   return a.header.sequence < b.header.sequence;
               });
-
+    m_stats.packets_decoded = received_packets.size();
     std::cout << "[RX] Successfully decoded packets: " << received_packets.size() << '\n';
 
     return received_packets;
@@ -149,6 +152,7 @@ RxPipeline::demod_parse(const std::vector<std::complex<float>>& filtered_samples
 
     for (const auto& detection : detections) {
         if (detection.offset >= filtered_samples.size()) {
+            ++m_stats.invalid_offsets;
             continue;
         }
 
@@ -252,9 +256,11 @@ RxPipeline::demod_parse(const std::vector<std::complex<float>>& filtered_samples
         const auto parsed_packet = builder.parse(bits, &ok);
         if (!parsed_packet.has_value()) {
             // std::cerr << "[RX] Packet parse failed\n";
+            ++m_stats.parse_failures;
             continue;
         }
         if (!ok) {
+            ++m_stats.checksum_failures;
             m_rejected.push_back(*parsed_packet);
             continue;
         }

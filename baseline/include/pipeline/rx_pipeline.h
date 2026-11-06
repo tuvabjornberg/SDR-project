@@ -12,6 +12,14 @@ struct PreambleDiagnostic {
     std::size_t errors;
 };
 
+struct RxStats {
+    std::size_t preambles_detected = 0;
+    std::size_t packets_decoded = 0;
+    std::size_t checksum_failures = 0;
+    std::size_t parse_failures = 0;
+    std::size_t invalid_offsets = 0;
+};
+
 class RxPipeline {
   public:
     std::vector<PacketStruct> decode_packets(const std::vector<std::complex<float>>& samples);
@@ -22,9 +30,15 @@ class RxPipeline {
         return m_rejected;
     }
 
+    const RxStats& stats() const {
+        return m_stats;
+    }
+
   private:
     std::vector<PacketStruct> demod_parse(const std::vector<std::complex<float>>& samples,
                                           const std::vector<Detection>& detections);
 
-    std::vector<PacketStruct> m_rejected;           // header OK, checksum failed
+    std::vector<PacketStruct> m_rejected; // header OK, checksum failed
+
+    RxStats m_stats;
 };
