@@ -1,7 +1,7 @@
 import re
 import csv
 
-LOG_FILE = "baseline-2sdr/run.txt"
+LOG_FILE = "improved-sync-2sdr/run2/run.txt"
 OUTPUT_FILE = "invalid_packets.csv"
 
 with open(LOG_FILE, "r") as f: lines = f.readlines()
@@ -42,7 +42,7 @@ with open(OUTPUT_FILE, "w", newline="") as f:
     for line in lines:
         line = line.strip()
 
-        if not line.startswith("[Parser]:"):
+        if not line.startswith(("[Parser]:", "[RX]")):
             continue
 
         # Skip sequence numbers already received.
@@ -51,6 +51,7 @@ with open(OUTPUT_FILE, "w", newline="") as f:
 
         preamble = re.search(r"Got:\s*(0x[0-9a-fA-F]+)", line)
         length = re.search(r"Got:\s*([0-9a-fA-F]+)\s*$", line)
+        checksum = re.search(r"metric\s+([\d.]+)", line)
 
         if "invalid preamble" in line:
             error_type = "invalid preamble"
@@ -58,6 +59,9 @@ with open(OUTPUT_FILE, "w", newline="") as f:
         elif "payload length exceeds maximum" in line:
             error_type = "payload length exceeds maximum"
             got = length.group(1) if length else ""
+        elif "Checksum failure" in line:
+            error_type = "checksum failiure"
+            got = checksum.group(1) if checksum else ""
         else:
             continue
 
