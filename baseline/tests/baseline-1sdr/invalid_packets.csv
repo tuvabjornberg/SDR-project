@@ -1,0 +1,150 @@
+Sequence Number,Error Type,Got
+0,invalid preamble,0x6d5ad6b5
+1,invalid preamble,0xed5ab6ad
+4,invalid preamble,0x495a96a5
+7,invalid preamble,0x4d5a96a5
+10,invalid preamble,0x6d4ad6b5
+11,invalid preamble,0x4d5a96a5
+12,invalid preamble,0x495a96a5
+13,payload length exceeds maximum,4071
+14,payload length exceeds maximum,999
+15,invalid preamble,0x6d4ad6b5
+16,invalid preamble,0x4d5a96a5
+17,invalid preamble,0x6d5ad6a5
+18,invalid preamble,0x4d5a96a5
+21,payload length exceeds maximum,4071
+22,invalid preamble,0x6d5ad6b5
+24,invalid preamble,0x4d5a96a5
+25,invalid preamble,0x4d5a96a5
+26,invalid preamble,0x4d5a96a5
+27,invalid preamble,0x6d5ad6b5
+28,invalid preamble,0x4d5a96a5
+29,invalid preamble,0x4d5ab6ad
+30,invalid preamble,0x6d5ad6b5
+31,invalid preamble,0x6d7ad6b5
+32,invalid preamble,0x654a92a5
+35,invalid preamble,0x4d5ab6ad
+36,invalid preamble,0x6d5ad6b5
+38,invalid preamble,0x4d5a96a5
+39,invalid preamble,0x6d7ad6b5
+40,invalid preamble,0x6d5ad6b5
+42,invalid preamble,0x6d7ad6b5
+43,invalid preamble,0x4d5ab6ad
+46,invalid preamble,0x6d7ad6b5
+47,invalid preamble,0x495a96a5
+48,invalid preamble,0x6d4ad6b5
+51,invalid preamble,0x495a96a5
+53,invalid preamble,0x6d4ad6b5
+54,payload length exceeds maximum,999
+55,invalid preamble,0x4d5a96a5
+56,payload length exceeds maximum,2023
+58,payload length exceeds maximum,4071
+59,invalid preamble,0x6d5ad6b5
+61,invalid preamble,0x6d5ad6b5
+62,invalid preamble,0x495a96a5
+63,invalid preamble,0x6d5ad6b5
+64,invalid preamble,0x4d5a96a5
+65,invalid preamble,0x4d5ab6ad
+68,invalid preamble,0x6d5ad6b5
+70,invalid preamble,0x4d5a96a5
+71,invalid preamble,0x6d5ad6b5
+73,invalid preamble,0x6d5ad6b5
+74,invalid preamble,0x4d5a96a5
+76,invalid preamble,0x6d5ad6b5
+77,invalid preamble,0x4d5ab6a5
+80,invalid preamble,0x654a92a5
+83,invalid preamble,0x4d5ab6ad
+84,invalid preamble,0x6d5ad6b5
+85,invalid preamble,0x4d5ab6a5
+86,invalid preamble,0x6d5ad6b5
+87,invalid preamble,0x6d7ad6b5
+88,invalid preamble,0x6d7ad6b5
+90,invalid preamble,0x495a94a5
+91,invalid preamble,0x4d4a96a5
+92,invalid preamble,0x495a96a5
+93,invalid preamble,0x4d5a96a5
+94,invalid preamble,0x4d5a96a5
+96,invalid preamble,0x6d4ad6b5
+97,invalid preamble,0x495a96a5
+98,invalid preamble,0x6d4ad6b5
+99,invalid preamble,0x495a96a5
+100,invalid preamble,0x4d5a96a5
+101,invalid preamble,0x6d4ad6b5
+103,payload length exceeds maximum,2023
+104,invalid preamble,0x6d5ad6b5
+107,payload length exceeds maximum,4071
+109,invalid preamble,0x6d5ad6b5
+110,invalid preamble,0x4d5a96a5
+111,invalid preamble,0x4d5a96a5
+112,payload length exceeds maximum,4071
+115,invalid preamble,0x4d5a96a5
+116,invalid preamble,0x4d5ab6a5
+117,payload length exceeds maximum,2031
+118,invalid preamble,0x654a92a5
+119,invalid preamble,0x6d7ad6b5
+120,invalid preamble,0x6d7ad6b5
+123,invalid preamble,0x6d5ad6b5
+124,invalid preamble,0x6d5ad6b5
+125,invalid preamble,0x6d7ad6b5
+126,invalid preamble,0xed5ab6ad
+127,invalid preamble,0x4d4a96a5
+128,invalid preamble,0x495a96a5
+131,invalid preamble,0x495a96a5
+132,invalid preamble,0x6d4ad6b5
+133,invalid preamble,0x495a96a5
+135,invalid preamble,0x4d5a96a5
+136,invalid preamble,0x4d5a96a5
+138,payload length exceeds maximum,2023
+139,invalid preamble,0x4d5a96a5
+141,invalid preamble,0x4d5a96a5
+144,invalid preamble,0x4d5a96a5
+145,payload length exceeds maximum,4071
+146,invalid preamble,0x4d5a96a5
+148,payload length exceeds maximum,2023
+149,invalid preamble,0x4d5a96a5
+150,invalid preamble,0x6d7ad6b5
+151,invalid preamble,0x6d5ad6b5
+152,invalid preamble,0x6d5ad6b5
+153,invalid preamble,0x6d7ad6b5
+154,invalid preamble,0x4d5a96a5
+157,payload length exceeds maximum,4071
+158,invalid preamble,0x4d5a96a5
+159,invalid preamble,0x6d5ad6b5
+160,invalid preamble,0x6d7ad6b5
+161,invalid preamble,0x6d5ad6b5
+162,invalid preamble,0x6d5ad6b5
+163,invalid preamble,0x4d5ab6ad
+165,invalid preamble,0x4d5ab6ad
+167,invalid preamble,0x6d5ab6a5
+169,invalid preamble,0x4d4a96a5
+170,invalid preamble,0x495a96a5
+173,invalid preamble,0x495a96a5
+175,invalid preamble,0x4d5a96a5
+176,invalid preamble,0x6d4ad6b5
+177,invalid preamble,0x495a96a5
+178,invalid preamble,0x4d5a96a5
+179,invalid preamble,0x6d4ad6b5
+180,invalid preamble,0x6d4ad6b5
+181,invalid preamble,0x4d5a96a5
+182,invalid preamble,0x4d5a96a5
+183,invalid preamble,0x4d5a96a5
+184,invalid preamble,0x6d7ad6b5
+185,payload length exceeds maximum,2023
+186,invalid preamble,0x6d5ad6b5
+187,payload length exceeds maximum,999
+188,invalid preamble,0x4d5a96a5
+189,invalid preamble,0x6d7ad6b5
+190,invalid preamble,0x654a92a5
+191,payload length exceeds maximum,2031
+192,invalid preamble,0x6d5ad6b5
+193,invalid preamble,0x4d5ab6ad
+194,invalid preamble,0x6d5ad6b5
+195,invalid preamble,0x4d5ab6ad
+196,invalid preamble,0x6d5ad6b5
+197,invalid preamble,0x6d5ad6b5
+198,invalid preamble,0xed5ab6ad
+199,invalid preamble,0x494a96a5
+200,invalid preamble,0x4d4a96a5
+201,invalid preamble,0x4d5a96a5
+202,invalid preamble,0x6d4ad6b5
+203,invalid preamble,0x495a96a5

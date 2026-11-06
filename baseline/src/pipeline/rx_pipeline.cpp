@@ -58,6 +58,15 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
     RRCFilter rx_filter;
     Synchronizer synchronizer;
 
+    constexpr double CFO_HZ = 1780.0; // measured: RX sees TX this far high
+
+    std::vector<std::complex<float>> corrected(captured_samples.size());
+    const double w = -2.0 * M_PI * CFO_HZ / SAMPLE_FREQ; // SAMPLE_FREQ = 2e6
+    for (std::size_t n = 0; n < captured_samples.size(); ++n) {
+        const double ph = w * static_cast<double>(n);
+        corrected[n] = captured_samples[n] * std::complex<float>(std::cos(ph), std::sin(ph));
+    }
+
 #if VERBOSE
     double raw_power = 0.0;
     float raw_max = 0.0f;
@@ -102,9 +111,11 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
 #endif
 
     auto filtered_samples = rx_filter.filter(
-        captured_samples,
-        rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
-                                     FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
+        corrected, rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
+                                                FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
+    // auto filtered_samples = rx_filter.filter(
+    //     captured_samples, rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
+    //                                             FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
 
 #if VERBOSE
     std::cout << "\tFiltered samples: " << filtered_samples.size() << std::endl;
@@ -115,6 +126,7 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
     if (detections.empty()) {
         std::cerr << "[RX] FAIL: No preamble detected\n";
     }
+    m_stats.preambles_detected = detections.size();
     std::cout << "[RX] Preambles detected: " << detections.size() << '\n';
 
     std::vector<PacketStruct> received_packets = demod_parse(filtered_samples, detections);
@@ -123,7 +135,7 @@ RxPipeline::decode_packets(const std::vector<std::complex<float>>& captured_samp
               [](const PacketStruct& a, const PacketStruct& b) {
                   return a.header.sequence < b.header.sequence;
               });
-
+    m_stats.packets_decoded = received_packets.size();
     std::cout << "[RX] Successfully decoded packets: " << received_packets.size() << '\n';
 
     return received_packets;
@@ -140,6 +152,7 @@ RxPipeline::demod_parse(const std::vector<std::complex<float>>& filtered_samples
 
     for (const auto& detection : detections) {
         if (detection.offset >= filtered_samples.size()) {
+            ++m_stats.invalid_offsets;
             continue;
         }
 
@@ -243,9 +256,11 @@ RxPipeline::demod_parse(const std::vector<std::complex<float>>& filtered_samples
         const auto parsed_packet = builder.parse(bits, &ok);
         if (!parsed_packet.has_value()) {
             // std::cerr << "[RX] Packet parse failed\n";
+            ++m_stats.parse_failures;
             continue;
         }
         if (!ok) {
+            ++m_stats.checksum_failures;
             m_rejected.push_back(*parsed_packet);
             continue;
         }

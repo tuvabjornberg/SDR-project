@@ -1,0 +1,251 @@
+tuva@trash:~/SDR-project/baseline$ ./build/packet_test 
+========================================
+B210 PACKET TEST
+========================================
+Packets:        200
+Payload size:   32 bytes
+Packet interval:20 ms
+Creating the usrp device with: serial=31993E7...
+[INFO] [UHD] linux; GNU C++ version 13.3.0; Boost_108300; UHD_4.9.0.HEAD-0-g006d7f76
+[INFO] [B200] Detected Device: B210
+[INFO] [B200] Operating over USB 3.
+[INFO] [B200] Initialize CODEC control...
+[INFO] [B200] Initialize Radio control...
+[INFO] [B200] Performing register loopback test... 
+[INFO] [B200] Register loopback test passed
+[INFO] [B200] Performing register loopback test... 
+[INFO] [B200] Register loopback test passed
+[INFO] [B200] Setting master clock rate selection to 'automatic'.
+[INFO] [B200] Asking for clock rate 16.000000 MHz... 
+[INFO] [B200] Actually got clock rate 16.000000 MHz.
+Lock mboard clocks: internal
+subdev set to: A:A
+Using Device: Single USRP:
+  Device: B-Series Device
+  Mboard 0: B210
+  RX Channel: 0
+    RX DSP: 0
+    RX Dboard: A
+    RX Subdev: FE-RX2
+  RX Channel: 1
+    RX DSP: 1
+    RX Dboard: A
+    RX Subdev: FE-RX1
+  TX Channel: 0
+    TX DSP: 0
+    TX Dboard: A
+    TX Subdev: FE-TX2
+
+[INFO] [B200] Asking for clock rate 32.000000 MHz... 
+[INFO] [B200] Actually got clock rate 32.000000 MHz.
+TX rate: 2e+06
+TX freq: 2.45e+09
+TX gain: 60
+Creating the usrp device with: serial=31993F0...
+[INFO] [B200] Detected Device: B210
+[INFO] [B200] Operating over USB 2.
+[INFO] [B200] Initialize CODEC control...
+[INFO] [B200] Initialize Radio control...
+[INFO] [B200] Performing register loopback test... 
+[INFO] [B200] Register loopback test passed
+[INFO] [B200] Performing register loopback test... 
+[INFO] [B200] Register loopback test passed
+[INFO] [B200] Setting master clock rate selection to 'automatic'.
+[INFO] [B200] Asking for clock rate 16.000000 MHz... 
+[INFO] [B200] Actually got clock rate 16.000000 MHz.
+Lock mboard clocks: internal
+subdev set to: A:A
+Using Device: Single USRP:
+  Device: B-Series Device
+  Mboard 0: B210
+  RX Channel: 0
+    RX DSP: 0
+    RX Dboard: A
+    RX Subdev: FE-RX2
+  TX Channel: 0
+    TX DSP: 0
+    TX Dboard: A
+    TX Subdev: FE-TX2
+  TX Channel: 1
+    TX DSP: 1
+    TX Dboard: A
+    TX Subdev: FE-TX1
+
+[INFO] [B200] Asking for clock rate 32.000000 MHz... 
+[INFO] [B200] Actually got clock rate 32.000000 MHz.
+RX rate: 2e+06
+RX freq: 2.45e+09
+RX gain: 40
+[TX async] no ack
+[OK] Transmission complete
+
+[WARNING] RX timeout
+[WARNING] RX timeout
+[WARNING] RX timeout
+t=0s rms=0.000842402 peak=0.0211988
+t=0.2s rms=0.0106794 peak=0.0511875
+t=0.4s rms=0.0110436 peak=0.0502145
+t=0.6s rms=0.0109526 peak=0.052281
+t=0.8s rms=0.0105707 peak=0.0516538
+t=1s rms=0.00508036 peak=0.0551453
+t=1.2s rms=0.0120876 peak=0.0579832
+t=1.4s rms=0.0111813 peak=0.0536401
+t=1.6s rms=0.010354 peak=0.0487778
+t=1.8s rms=0.0102907 peak=0.0475455
+t=2s rms=0.0118033 peak=0.0530861
+t=2.2s rms=0.0112258 peak=0.0677193
+t=2.4s rms=0.00135777 peak=0.0292441
+t=2.6s rms=0.000474286 peak=0.00333826
+global peak: 0.593656
+[RX] Preambles detected: 165
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x494a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d4a9685
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d4ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d7ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5ab6ad
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5a96a7
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d4a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x495a96b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5af6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d7ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0xed5ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5a96e7
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5ab6ad
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5a96e7
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5ab6ad
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5ab6a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5af6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d7ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5a96e7
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x494a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6c1896a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5a96e7
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d4a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x495ad6a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d7ad6b5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5ab6a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x6d5a96e7
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: payload length exceeds maximum, Expected <= 200, Got: 3e7
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: payload length exceeds maximum, Expected <= 200, Got: 3e7
+[Parser]: invalid preamble, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[RX] Successfully decoded packets: 61
+
+========================================
+TEST RESULTS
+========================================
+Packets transmitted: 200
+Packets detected:    114
+Packets decoded:     61
+Packets received:    61
+Packets lost:        139
+
+PDR: 30.5 %
+PER: 69.5 %
+
+Bit errors: 3370
+Bits compared: 29184
+BER: 0.115474
+
+RX overflows: 0
+
+CPU user time:   2.54089 s
+CPU system time: 1.77833 s
+CPU total time:  4.31922 s
+CPU time/packet: 0.0215961 s
+========================================
+Received:
+2 3 5 6 8 9 19 20 23 33 34 37 41 44 45 49 50 52 57 60 66 67 69 72 75 78 79 81 82 89 95 102 105 106 108 113 114 121 122 129 130 134 137 140 142 143 147 155 156 164 166 168 171 172 174 179 180 187 188 195 196 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[Parser]: invalid preamble, Sequence: 16383, Expected: 0x6d5a96a5, Got: 0x6d4ad6b5
+[Parser]: invalid preamble, Sequence: 49148, Expected: 0x6d5a96a5, Got: 0x6d4ad6b5
+[Parser]: invalid preamble, Sequence: 32762, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Sequence: 32761, Expected: 0x6d5a96a5, Got: 0x6d5ad6a5
+[Parser]: invalid preamble, Sequence: 32759, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Sequence: 19, Expected: 0x6d5a96a5, Got: 0x654a92a5
+[Parser]: invalid preamble, Sequence: 49142, Expected: 0x6d5a96a5, Got: 0x6d5ad6b5
+[Parser]: payload length exceeds maximum, Sequence: 16371, Expected <= 512, Got: 999
+[Parser]: invalid preamble, Sequence: 32753, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Sequence: 32752, Expected: 0x6d5a96a5, Got: 0x4d5ab6ad
+[Parser]: payload length exceeds maximum, Sequence: 16358, Expected <= 512, Got: 2023
+[Parser]: invalid preamble, Sequence: 49130, Expected: 0x6d5a96a5, Got: 0x6d7ad6b5
+[Parser]: invalid preamble, Sequence: 32745, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Sequence: 16359, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Sequence: 16356, Expected: 0x6d5a96a5, Got: 0x4d4a96a5
+[Parser]: invalid preamble, Sequence: 32738, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Sequence: 16352, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Sequence: 207, Expected: 0x6d5a96a5, Got: 0x6d5a97e7
+[Parser]: invalid preamble, Sequence: 70, Expected: 0x6d5a96a5, Got: 0x654a92a5
+[Parser]: payload length exceeds maximum, Sequence: 32713, Expected <= 512, Got: 999
+[Parser]: invalid preamble, Sequence: 49106, Expected: 0x6d5a96a5, Got: 0x6d5ad6b5
+[Parser]: invalid preamble, Sequence: 16340, Expected: 0x6d5a96a5, Got: 0x6d5ad6b5
+[Parser]: invalid preamble, Sequence: 32731, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Sequence: 32859, Expected: 0x6d5a96a5, Got: 0x6d4ad6b5
+[Parser]: invalid preamble, Sequence: 32721, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Sequence: 32864, Expected: 0x6d5a96a5, Got: 0x6d4ad6b5
+[Parser]: invalid preamble, Sequence: 16334, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Sequence: 16324, Expected: 0x6d5a96a5, Got: 0x4d4a96a5
+[Parser]: invalid preamble, Sequence: 32712, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Sequence: 118, Expected: 0x6d5a96a5, Got: 0x6d5a96e7
+[Parser]: invalid preamble, Sequence: 16284, Expected: 0x6d5a96a5, Got: 0x6d4a96a5
+[Parser]: invalid preamble, Sequence: 16284, Expected: 0x6d5a96a5, Got: 0x6d4ad6b5
+[Parser]: invalid preamble, Sequence: 16282, Expected: 0x6d5a96a5, Got: 0x6d5ad6b5
+[Parser]: invalid preamble, Sequence: 32697, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Sequence: 16275, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Sequence: 49044, Expected: 0x6d5a96a5, Got: 0x6d7ad6b5
+[Parser]: invalid preamble, Sequence: 16274, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Sequence: 16272, Expected: 0x6d5a96a5, Got: 0x6d4ad6a5
+[Parser]: invalid preamble, Sequence: 32687, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Sequence: 16263, Expected: 0x6d5a96a5, Got: 0x4d4a92a5
+[Parser]: invalid preamble, Sequence: 16292, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
+[Parser]: invalid preamble, Sequence: 16292, Expected: 0x6d5a96a5, Got: 0x495a96a5
+[Parser]: invalid preamble, Sequence: 16288, Expected: 0x6d5a96a5, Got: 0x6d4a9685
+[Parser]: invalid preamble, Sequence: 172, Expected: 0x6d5a96a5, Got: 0x6d1a96a5
+[Parser]: invalid preamble, Sequence: 16293, Expected: 0x6d5a96a5, Got: 0x4d4a96a5
+[Parser]: invalid preamble, Sequence: 32678, Expected: 0x6d5a96a5, Got: 0xed5ab6ad
+[Parser]: invalid preamble, Sequence: 181, Expected: 0x6d5a96a5, Got: 0x6c1896a5
+[Parser]: invalid preamble, Sequence: 16260, Expected: 0x6d5a96a5, Got: 0x4d4a96a5
+[Parser]: invalid preamble, Sequence: 16273, Expected: 0x6d5a96a5, Got: 0x6d4a9285
+[Parser]: invalid preamble, Sequence: 190, Expected: 0x6d5a96a5, Got: 0x6c5a96a5
+[Parser]: invalid preamble, Sequence: 16286, Expected: 0x6d5a96a5, Got: 0x6d4a96a5
+[Parser]: invalid preamble, Sequence: 16285, Expected: 0x6d5a96a5, Got: 0x4d5a96a5
