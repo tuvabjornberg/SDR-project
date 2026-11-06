@@ -40,7 +40,7 @@ static constexpr double TX_BANDWIDTH = 1.5e6;
 
 // RX node
 static const std::string RX_SERIAL = "serial=31993F0";
-static const std::string RX_SUBDEV = "A:A A:B";
+static const std::string RX_SUBDEV = "A:A"; // A:B";
 static const std::string RX_ANT = "RX2";
 static const std::string RX_REF = "internal";
 static constexpr double RX_RATE = SAMPLE_FREQ;

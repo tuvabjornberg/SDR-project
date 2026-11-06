@@ -29,7 +29,7 @@ struct PacketLog {
 struct TestConfig {
     std::size_t num_packets = 200;
     std::size_t payload_size = 32;
-    int packet_interval_ms = 20;
+    int packet_interval_ms = 10;
 };
 
 struct TestResults {
@@ -142,7 +142,7 @@ void print_results(const TestConfig& config, const TestResults& results) {
     std::cout << "Packets transmitted: " << results.packets_transmitted << '\n';
     std::cout << "Packets detected:    " << results.packets_detected << '\n';
     std::cout << "Packets decoded:     " << results.packets_decoded << '\n';
-    std::cout << "Packets received:    " << results.packets_received << '\n';
+    // std::cout << "Packets received:    " << results.packets_received << '\n';
     std::cout << "Packets lost:        " << results.packets_lost << '\n';
 
     std::cout << "\n";
@@ -177,17 +177,16 @@ void save_results_csv(const TestConfig& config, const TestResults& results,
 
     file << "num_packets,payload_size,interval_ms,"
             "packets_tx,packets_detected,packets_decoded,"
-            "packets_received,packets_lost,"
+            ",packets_lost,"
             "pdr,per,bit_errors,bits_compared,ber,"
             "rx_overflows,cpu_user,cpu_system\n";
 
     file << config.num_packets << "," << config.payload_size << "," << config.packet_interval_ms
          << "," << results.packets_transmitted << "," << results.packets_detected << ","
-         << results.packets_decoded << "," << results.packets_received << ","
-         << results.packets_lost << "," << results.pdr << "," << results.per << ","
-         << results.bit_errors << "," << results.bits_compared << "," << results.ber << ","
-         << results.rx_overflows << "," << results.cpu_user_time << "," << results.cpu_system_time
-         << "\n";
+         << results.packets_decoded << "," << results.packets_lost << "," << results.pdr << ","
+         << results.per << "," << results.bit_errors << "," << results.bits_compared << ","
+         << results.ber << "," << results.rx_overflows << "," << results.cpu_user_time << ","
+         << results.cpu_system_time << "\n";
 }
 
 void save_packet_log(const std::vector<PacketLog>& logs, const std::string& filename) {
@@ -225,15 +224,19 @@ int main() {
     std::cout << "Payload size:   " << config.payload_size << " bytes\n";
     std::cout << "Packet interval:" << config.packet_interval_ms << " ms\n";
 
-    // USRP
-    auto usrp = uhd::usrp::multi_usrp::make(TX_SERIAL);
+    // When running with 1 SDR
+    // auto usrp = uhd::usrp::multi_usrp::make(TX_SERIAL);
 
-    usrp->set_clock_source("internal");
-    usrp->set_tx_subdev_spec(TX_SUBDEV);
-    usrp->set_rx_subdev_spec(RX_SUBDEV);
+    // usrp->set_clock_source("internal");
+    // usrp->set_tx_subdev_spec(TX_SUBDEV);
+    // usrp->set_rx_subdev_spec(RX_SUBDEV);
 
-    Transmitter tx(usrp);
-    Receiver rx(usrp);
+    // Transmitter tx(usrp);
+    // Receiver rx(usrp);
+
+    // When running with 2 SDRs
+    Transmitter tx;
+    Receiver rx;
 
     // Artificial payload
     std::vector<std::vector<uint8_t>> transmitted_payloads;
@@ -244,7 +247,8 @@ int main() {
 
     // RX
     std::vector<std::complex<float>> captured_samples;
-    captured_samples.reserve(config.num_packets * config.payload_size * SAMPLES_PER_SYMBOL);
+    // captured_samples.reserve(config.num_packets * config.payload_size * SAMPLES_PER_SYMBOL);
+    captured_samples.reserve(settings::RX_CAPTURE_SECONDS * 2e6 * 1.1);
 
     rx.start();
 
@@ -299,12 +303,14 @@ int main() {
     auto received_packets = rx_pipeline.decode_packets(captured_samples);
 
     // Statistics
-    results.packets_decoded = received_packets.size();
+    const auto& rx_stats = rx_pipeline.stats();
+
+    results.packets_decoded = rx_stats.packets_decoded;
+    results.packets_detected = rx_stats.preambles_detected;
 
     calculate_packet_statistics(received_packets, config.num_packets, results, packet_logs);
     calculate_bit_statistics(received_packets, transmitted_payloads, results, packet_logs);
     calculate_bit_statistics(rx_pipeline.rejected(), transmitted_payloads, results, packet_logs);
-    results.packets_detected = received_packets.size() + rx_pipeline.rejected().size();
 
     struct rusage cpu_end{};
     getrusage(RUSAGE_SELF, &cpu_end);
@@ -320,10 +326,18 @@ int main() {
     save_packet_log(packet_logs, "tests/outlog/ind_packets.csv");
 
     std::cout << "Received:\n";
-
     for (const auto& p : received_packets) {
         std::cout << p.header.sequence << ' ';
     }
+
+    std::cout << '\n';
+
+    std::cout << "\nRX breakdown:\n"
+              << "Preambles detected: " << rx_stats.preambles_detected << '\n'
+              << "Successfully decoded: " << rx_stats.packets_decoded << '\n'
+              << "Checksum failures: " << rx_stats.checksum_failures << '\n'
+              << "Parser failures: " << rx_stats.parse_failures << '\n'
+              << "Invalid offsets: " << rx_stats.invalid_offsets << '\n';
 
     return 0;
 }
