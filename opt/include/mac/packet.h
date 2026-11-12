@@ -14,6 +14,7 @@ struct PacketStruct {
     PacketHeader header;
     std::vector<uint8_t> payload;
     uint32_t checksum;
+    bool valid;
 };
 
 constexpr uint16_t FLAG_MASK = 0x000F;

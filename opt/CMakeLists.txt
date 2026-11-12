@@ -1,24 +1,29 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 project(SDRProject
     VERSION 0.1.0
+    DESCRIPTION "Software Defined Radio Project"
     LANGUAGES CXX
 )
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-    set(CMAKE_EXE_LINKER_FLAGS "-lthr ${CMAKE_EXE_LINKER_FLAGS}")
-    set(CMAKE_CXX_FLAGS "-stdlib=libc++ ${CMAKE_CXX_FLAGS}")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(UHD_USE_STATIC_LIBS "Link against static UHD libraries" OFF)
+option(BUILD_APPS "Build SDR applications" ON)
+option(BUILD_TESTS "Build tests" ON)
+
+
+if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD"
+   AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+
+    add_compile_options(-stdlib=libc++)
+    add_link_options(-stdlib=libc++)
+
 endif()
-
-### Set up build environment ##################################################
-# Choose a static or shared-library build (shared is default, and static will
-# probably need some special care!)
-# Set this to ON in order to link a static build of UHD:
-option(UHD_USE_STATIC_LIBS OFF)
 
 find_package(UHD 4.9.0 REQUIRED)
 
@@ -27,21 +32,27 @@ include(UHDMinDepVersions)
 set(UHD_BOOST_REQUIRED_COMPONENTS
     program_options
 )
+
 include(UHDBoost)
 
-#find_package(Boost 1.66 REQUIRED COMPONENTS
-#    program_options
-#)
+find_package(Threads REQUIRED)
 
 message(STATUS "UHD version: ${UHD_VERSION}")
 message(STATUS "UHD libraries: ${UHD_LIBRARIES}")
-message(STATUS "UHD include directories: ${UHD_INCLUDE_DIRS}")
+
+add_library(project_warnings INTERFACE)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(project_warnings INTERFACE
+        -Wall
+        -Wextra
+        -Wpedantic
+    )
+endif()
 
 set(PROJECT_INCLUDE_DIR
     ${PROJECT_SOURCE_DIR}/include
 )
-
-include_directories(${CMAKE_SOURCE_DIR})
 
 # MAC layer
 add_library(mac STATIC
@@ -55,7 +66,8 @@ target_include_directories(mac
 )
 
 target_link_libraries(mac
-    PUBLIC
+    PRIVATE
+        project_warnings
 )
 
 # PHY layer
@@ -71,7 +83,8 @@ target_include_directories(phy
 )
 
 target_link_libraries(phy
-    PUBLIC
+    PRIVATE
+        project_warnings
 )
 
 # Radio layer
@@ -88,10 +101,14 @@ target_include_directories(radio
 
 target_link_libraries(radio
     PUBLIC
-    ${UHD_LIBRARIES}
-    ${UHD_STATIC_LIB_LINK_FLAG}
-    ${UHD_STATIC_LIB_DEPS}
-    Boost::program_options
+        ${UHD_LIBRARIES}
+        ${UHD_STATIC_LIB_LINK_FLAG}
+        ${UHD_STATIC_LIB_DEPS}
+        Boost::program_options
+        Threads::Threads
+
+    PRIVATE
+        project_warnings
 )
 
 # Pipeline layer
@@ -107,70 +124,57 @@ target_include_directories(pipeline
 
 target_link_libraries(pipeline
     PUBLIC
-    mac
-    phy
-)
-
- #Packet performance test
-add_executable(packet_test
-    tests/packet_test.cpp
-)
-
-target_link_libraries(packet_test
-    PRIVATE
         mac
         phy
-        radio
-        pipeline
+
+    PRIVATE
+        project_warnings
 )
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    foreach(target mac phy sdr_tx sdr_rx sdr_txrx packet_test)
-        target_compile_options(${target} PRIVATE
-            -Wall
-            -Wextra
-            -Wpedantic
-        )
-    endforeach()
+if(BUILD_APPS)
+
+    add_executable(simo
+        tests/simo.cpp
+    )
+
+    target_link_libraries(simo
+        PRIVATE
+            radio
+            pipeline
+            project_warnings
+    )
+
+    add_executable(mimo
+        tests/mimo.cpp
+    )
+
+    target_link_libraries(mimo
+        PRIVATE
+            radio
+            pipeline
+            project_warnings
+    )
+
 endif()
-
-
-# Tests
-option(BUILD_TESTS "Build tests" ON)
 
 if(BUILD_TESTS)
 
     enable_testing()
 
     add_executable(test_main
-        tests/test_main.cpp
+        tests/mimo_tone_test.cpp
     )
 
     target_link_libraries(test_main
         PRIVATE
-            phy
-            mac
+            radio
             pipeline
-            ${UHD_LIBRARIES}
-            ${UHD_STATIC_LIB_LINK_FLAG}
-            ${UHD_STATIC_LIB_DEPS}
-            Boost::program_options
+            project_warnings
     )
 
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-
-        target_compile_options(test_main PRIVATE
-            -Wall
-            -Wextra
-            -Wpedantic
-        )
-
-    endif()
-
     add_test(
-        NAME main
+        NAME mimo_tone
         COMMAND test_main
     )
 
 endif()
-

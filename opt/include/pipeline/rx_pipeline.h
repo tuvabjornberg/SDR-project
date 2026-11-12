@@ -22,7 +22,9 @@ struct RxStats {
 
 class RxPipeline {
   public:
-    std::vector<PacketStruct> decode_packets(const std::vector<std::complex<float>>& samples);
+    std::vector<PacketStruct> decode_packets(const Synchronizer::Channels& captured);
+
+    // std::vector<PacketStruct> decode_packets(const std::vector<std::complex<float>>& samples);
 
     std::vector<uint8_t> packet_to_msg(std::vector<PacketStruct> received_packets);
 
@@ -35,7 +37,9 @@ class RxPipeline {
     }
 
   private:
-    std::vector<PacketStruct> demod_parse(const std::vector<std::complex<float>>& samples,
+    //     std::vector<PacketStruct> demod_parse(const std::vector<std::complex<float>>& samples,
+    //                                           const std::vector<Detection>& detections);
+    std::vector<PacketStruct> demod_parse(const Synchronizer::Channels& filtered,
                                           const std::vector<Detection>& detections);
 
     std::vector<PacketStruct> m_rejected; // header OK, checksum failed

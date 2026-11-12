@@ -225,18 +225,18 @@ int main() {
     std::cout << "Packet interval:" << config.packet_interval_ms << " ms\n";
 
     // When running with 1 SDR
-    // auto usrp = uhd::usrp::multi_usrp::make(TX_SERIAL);
+    auto usrp = uhd::usrp::multi_usrp::make(TX_SERIAL);
 
-    // usrp->set_clock_source("internal");
-    // usrp->set_tx_subdev_spec(TX_SUBDEV);
-    // usrp->set_rx_subdev_spec(RX_SUBDEV);
+    usrp->set_clock_source("internal");
+    usrp->set_tx_subdev_spec(TX_SUBDEV);
+    usrp->set_rx_subdev_spec(RX_SUBDEV);
 
-    // Transmitter tx(usrp);
-    // Receiver rx(usrp);
+    Transmitter tx(usrp);
+    Receiver rx(usrp);
 
     // When running with 2 SDRs
-    Transmitter tx;
-    Receiver rx;
+    // Transmitter tx;
+    // Receiver rx;
 
     // Artificial payload
     std::vector<std::vector<uint8_t>> transmitted_payloads;
@@ -246,9 +246,15 @@ int main() {
     }
 
     // RX
-    std::vector<std::complex<float>> captured_samples;
+    std::array<std::vector<std::complex<float>>, 2> captured_samples; // one buffer per RX channel
+                                                                      // in the rx thread:
+
+    // std::vector<std::complex<float>> captured_samples;
     // captured_samples.reserve(config.num_packets * config.payload_size * SAMPLES_PER_SYMBOL);
-    captured_samples.reserve(settings::RX_CAPTURE_SECONDS * 2e6 * 1.1);
+    // captured_samples.reserve(settings::RX_CAPTURE_SECONDS * 2e6 * 1.1);
+
+    for (auto& c : captured_samples)
+        c.reserve(static_cast<std::size_t>(settings::RX_CAPTURE_SECONDS * SAMPLE_FREQ * 1.2));
 
     rx.start();
 
@@ -259,10 +265,13 @@ int main() {
 
             auto chunk = rx.receive(settings::RX_CHUNK_SIZE);
 
-            captured_samples.insert(captured_samples.end(), chunk.samples.begin(),
-                                    chunk.samples.end());
+            for (std::size_t ch = 0; ch < 2; ++ch)
+                captured_samples[ch].insert(captured_samples[ch].end(), chunk.samples[ch].begin(),
+                                            chunk.samples[ch].end());
         }
     });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200)); // after rx.start(), before TX
 
     // TX
     TxPipeline tx_pipeline;
@@ -280,7 +289,8 @@ int main() {
             std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch())
                 .count();
 
-        num_sent = tx.send(samples);
+        std::vector<std::complex<float>> zeros(samples.size());
+        num_sent = tx.send(samples, zeros);
         ++results.packets_transmitted;
 
         if (num_sent != samples.size()) {
@@ -299,45 +309,67 @@ int main() {
     rx.stop();
     rx_thread.join();
 
-    RxPipeline rx_pipeline;
-    auto received_packets = rx_pipeline.decode_packets(captured_samples);
+    // RxPipeline rx_pipeline;
 
-    // Statistics
-    const auto& rx_stats = rx_pipeline.stats();
+    auto run = [&](const char* name, bool use0, bool use1) {
+        auto in = captured_samples;
+        if (!use0)
+            std::fill(in[0].begin(), in[0].end(), std::complex<float>{});
+        if (!use1)
+            std::fill(in[1].begin(), in[1].end(), std::complex<float>{});
+        RxPipeline rx_pipeline;
+        // auto pk = rx_pipeline.decode_packets(in);
 
-    results.packets_decoded = rx_stats.packets_decoded;
-    results.packets_detected = rx_stats.preambles_detected;
+        auto received_packets = rx_pipeline.decode_packets(in);
 
-    calculate_packet_statistics(received_packets, config.num_packets, results, packet_logs);
-    calculate_bit_statistics(received_packets, transmitted_payloads, results, packet_logs);
-    calculate_bit_statistics(rx_pipeline.rejected(), transmitted_payloads, results, packet_logs);
+        std::cout << name << ": decoded " << received_packets.size() << " / " << config.num_packets
+                  << ", checksum failures " << rx_pipeline.stats().checksum_failures << '\n';
 
-    struct rusage cpu_end{};
-    getrusage(RUSAGE_SELF, &cpu_end);
+        // Statistics
+        if (use0 && use1) {
+            const auto& rx_stats = rx_pipeline.stats();
 
-    results.cpu_user_time = (cpu_end.ru_utime.tv_sec - cpu_start.ru_utime.tv_sec) +
-                            1e-6 * (cpu_end.ru_utime.tv_usec - cpu_start.ru_utime.tv_usec);
+            results.packets_decoded = rx_stats.packets_decoded;
+            results.packets_detected = rx_stats.preambles_detected;
 
-    results.cpu_system_time = (cpu_end.ru_stime.tv_sec - cpu_start.ru_stime.tv_sec) +
-                              1e-6 * (cpu_end.ru_stime.tv_usec - cpu_start.ru_stime.tv_usec);
+            calculate_packet_statistics(received_packets, config.num_packets, results, packet_logs);
+            calculate_bit_statistics(received_packets, transmitted_payloads, results, packet_logs);
+            calculate_bit_statistics(rx_pipeline.rejected(), transmitted_payloads, results,
+                                     packet_logs);
 
-    print_results(config, results);
-    save_results_csv(config, results, "tests/outlog/tot_packets.csv");
-    save_packet_log(packet_logs, "tests/outlog/ind_packets.csv");
+            struct rusage cpu_end{};
+            getrusage(RUSAGE_SELF, &cpu_end);
 
-    std::cout << "Received:\n";
-    for (const auto& p : received_packets) {
-        std::cout << p.header.sequence << ' ';
-    }
+            results.cpu_user_time = (cpu_end.ru_utime.tv_sec - cpu_start.ru_utime.tv_sec) +
+                                    1e-6 * (cpu_end.ru_utime.tv_usec - cpu_start.ru_utime.tv_usec);
 
-    std::cout << '\n';
+            results.cpu_system_time =
+                (cpu_end.ru_stime.tv_sec - cpu_start.ru_stime.tv_sec) +
+                1e-6 * (cpu_end.ru_stime.tv_usec - cpu_start.ru_stime.tv_usec);
 
-    std::cout << "\nRX breakdown:\n"
-              << "Preambles detected: " << rx_stats.preambles_detected << '\n'
-              << "Successfully decoded: " << rx_stats.packets_decoded << '\n'
-              << "Checksum failures: " << rx_stats.checksum_failures << '\n'
-              << "Parser failures: " << rx_stats.parse_failures << '\n'
-              << "Invalid offsets: " << rx_stats.invalid_offsets << '\n';
+            print_results(config, results);
+            save_results_csv(config, results, "tests/outlog/tot_packets.csv");
+            save_packet_log(packet_logs, "tests/outlog/ind_packets.csv");
+
+            std::cout << "Received:\n";
+            for (const auto& p : received_packets) {
+                std::cout << p.header.sequence << ' ';
+            }
+
+            std::cout << '\n';
+
+            std::cout << "\nRX breakdown:\n"
+                      << "Preambles detected: " << rx_stats.preambles_detected << '\n'
+                      << "Successfully decoded: " << rx_stats.packets_decoded << '\n'
+                      << "Checksum failures: " << rx_stats.checksum_failures << '\n'
+                      << "Parser failures: " << rx_stats.parse_failures << '\n'
+                      << "Invalid offsets: " << rx_stats.invalid_offsets << '\n';
+        }
+    };
+
+    run("RX0 only", true, false);
+    run("RX1 only", false, true);
+    run("RX0+RX1 (MRC)", true, true);
 
     return 0;
 }
