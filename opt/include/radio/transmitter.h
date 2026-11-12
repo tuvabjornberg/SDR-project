@@ -17,7 +17,11 @@ class Transmitter {
     Transmitter();
     Transmitter(uhd::usrp::multi_usrp::sptr usrp);
 
-    size_t send(std::vector<std::complex<float>> samples);
+    size_t send(const std::vector<std::complex<float>>& samples_tx0,
+                const std::vector<std::complex<float>>& samples_tx1);
+
+    // size_t send_mimo(const std::vector<std::complex<float>>& samples_tx0,
+    //                  const std::vector<std::complex<float>>& samples_tx1);
 
   private:
     uhd::usrp::multi_usrp::sptr m_usrp;

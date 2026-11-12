@@ -13,8 +13,8 @@
 #include <vector>
 
 struct RxChunk {
-    double timestamp;
-    std::vector<std::complex<float>> samples;
+    double timestamp = 0.0;
+    std::vector<std::complex<float>> samples[2];
 };
 
 class Receiver {

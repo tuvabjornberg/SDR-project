@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <uhd/types/tune_request.hpp>
+#include <vector>
 
 // namespace config {
 
@@ -28,7 +29,7 @@ static constexpr double GAIN = 1.0;
 
 // TX node
 static const std::string TX_SERIAL = "serial=31993E7";
-static const std::string TX_SUBDEV = "A:A";
+static const std::string TX_SUBDEV = "A:A A:B";
 static const std::string TX_ANT = "TX/RX";
 static const std::string TX_REF = "internal";
 static constexpr double TX_RATE = SAMPLE_FREQ;
@@ -36,16 +37,22 @@ static const uhd::tune_request_t TX_FREQ = 2450e6;
 static constexpr double TX_GAIN = 60;
 static constexpr double TX_BANDWIDTH = 1.5e6;
 
+static constexpr std::size_t NUM_TX_CHANNELS = 2;
+static const std::vector<std::size_t> TX_CHANNELS = {0, 1};
+
 //---------------RX----------------
 
 // RX node
 static const std::string RX_SERIAL = "serial=31993F0";
-static const std::string RX_SUBDEV = "A:A"; // A:B";
+static const std::string RX_SUBDEV = "A:A A:B";
 static const std::string RX_ANT = "RX2";
 static const std::string RX_REF = "internal";
 static constexpr double RX_RATE = SAMPLE_FREQ;
 static const uhd::tune_request_t RX_FREQ = 2450e6;
 static constexpr double RX_GAIN = 40;
 static constexpr double RX_BANDWIDTH = 1.5e6;
+
+static constexpr std::size_t NUM_RX_CHANNELS = 2;
+static const std::vector<std::size_t> RX_CHANNELS = {0, 1};
 
 // } // namespace config

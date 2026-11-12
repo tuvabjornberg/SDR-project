@@ -100,10 +100,12 @@ std::vector<uint8_t> Packet::packet_to_bits(const PacketStruct& packet) {
 
 std::optional<PacketStruct> Packet::parse(const std::vector<uint8_t>& bits, bool* checksum_ok) {
     // whiten(bits, PREAMBLE_SIZE);
+    PacketStruct packet{};
 
     if (bits.size() < MIN_PACKET_SIZE) {
         std::cerr << "[Parser]: insufficient bits for packet\n";
-        return std::nullopt;
+        packet.valid = false;
+        // return std::nullopt;
     }
 
     std::size_t offset = 0;
@@ -178,8 +180,6 @@ std::optional<PacketStruct> Packet::parse(const std::vector<uint8_t>& bits, bool
         std::cerr << "[Parser]: incomplete payload or checksum\n";
         return std::nullopt;
     }
-
-    PacketStruct packet{};
 
     packet.preamble = preamble;
     packet.header = header;

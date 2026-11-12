@@ -18,52 +18,55 @@ Receiver::Receiver() {
     usrp->set_rx_subdev_spec(RX_SUBDEV);
     std::cout << boost::format("Using Device: %s") % usrp->get_pp_string() << std::endl;
 
-    usrp->set_rx_rate(RX_RATE);
-    usrp->set_rx_freq(RX_FREQ);
-    usrp->set_rx_gain(RX_GAIN);
-    usrp->set_rx_bandwidth(RX_BANDWIDTH);
-    usrp->set_rx_antenna(RX_ANT);
+    for (std::size_t ch = 0; ch < NUM_RX_CHANNELS; ++ch) {
+        usrp->set_rx_rate(RX_RATE, ch);
+        usrp->set_rx_freq(RX_FREQ, ch);
+        usrp->set_rx_gain(RX_GAIN, ch);
+        usrp->set_rx_bandwidth(RX_BANDWIDTH, ch);
+        usrp->set_rx_antenna(RX_ANT, ch);
 
-    std::cout << "RX rate: " << usrp->get_rx_rate() << std::endl;
-    std::cout << "RX freq: " << usrp->get_rx_freq() << std::endl;
-    std::cout << "RX gain: " << usrp->get_rx_gain() << std::endl;
+        std::cout << "RX channel " << ch << std::endl;
+        std::cout << "RX rate: " << usrp->get_rx_rate() << std::endl;
+        std::cout << "RX freq: " << usrp->get_rx_freq() << std::endl;
+        std::cout << "RX gain: " << usrp->get_rx_gain() << std::endl;
+    }
 
     uhd::stream_args_t stream_args("fc32", "sc16");
+    stream_args.channels = {0, 1};
     m_rx_streamer = usrp->get_rx_stream(stream_args);
 }
 
 Receiver::Receiver(uhd::usrp::multi_usrp::sptr usrp) : m_usrp(std::move(usrp)) {
+    m_usrp->set_rx_subdev_spec(RX_SUBDEV);
 
-    const size_t rx_chan = 1;
+    for (std::size_t ch = 0; ch < NUM_RX_CHANNELS; ++ch) {
+        m_usrp->set_rx_rate(RX_RATE, ch);
+        m_usrp->set_rx_freq(RX_FREQ, ch);
+        m_usrp->set_rx_gain(RX_GAIN, ch);
+        m_usrp->set_rx_bandwidth(RX_BANDWIDTH, ch);
+        m_usrp->set_rx_antenna(RX_ANT, ch);
 
-    m_usrp->set_rx_rate(RX_RATE, rx_chan);
-    m_usrp->set_rx_freq(RX_FREQ, rx_chan);
-    m_usrp->set_rx_gain(RX_GAIN, rx_chan);
-    m_usrp->set_rx_bandwidth(RX_BANDWIDTH, rx_chan);
-    m_usrp->set_rx_antenna(RX_ANT, rx_chan);
-    // m_usrp->set_rx_dc_offset(false, rx_chan);
-    // m_usrp->set_rx_iq_balance(false, rx_chan);
-
-    std::cout << "RX rate: " << m_usrp->get_rx_rate(rx_chan) << '\n';
-    std::cout << "RX freq: " << m_usrp->get_rx_freq(rx_chan) << '\n';
-    std::cout << "RX gain: " << m_usrp->get_rx_gain(rx_chan) << '\n';
-    std::cout << "RX antenna: " << m_usrp->get_rx_antenna(rx_chan) << '\n';
+        std::cout << "RX channel " << ch << std::endl;
+        std::cout << "RX rate: " << m_usrp->get_rx_rate() << std::endl;
+        std::cout << "RX freq: " << m_usrp->get_rx_freq() << std::endl;
+        std::cout << "RX gain: " << m_usrp->get_rx_gain() << std::endl;
+    }
 
     uhd::stream_args_t stream_args("fc32", "sc16");
-    stream_args.channels = {rx_chan};
+    stream_args.channels = {0, 1};
     m_rx_streamer = m_usrp->get_rx_stream(stream_args);
 }
 
 RxChunk Receiver::receive(std::size_t num_samples) {
     RxChunk chunk;
-    chunk.samples.resize(num_samples);
+    chunk.samples[0].resize(num_samples);
+    chunk.samples[1].resize(num_samples);
 
     uhd::rx_metadata_t md;
 
-    const double timeout = 1.0;
+    std::vector<void*> buffs = {chunk.samples[0].data(), chunk.samples[1].data()};
 
-    const std::size_t num_received =
-        m_rx_streamer->recv(chunk.samples.data(), chunk.samples.size(), md, 1.0);
+    const std::size_t num_received = m_rx_streamer->recv(buffs, num_samples, md, 1.0);
 
     switch (md.error_code) {
     case uhd::rx_metadata_t::ERROR_CODE_NONE:
@@ -81,7 +84,8 @@ RxChunk Receiver::receive(std::size_t num_samples) {
         throw std::runtime_error("RX error: " + md.strerror());
     }
 
-    chunk.samples.resize(num_received);
+    chunk.samples[0].resize(num_received);
+    chunk.samples[1].resize(num_received);
     chunk.timestamp = md.time_spec.get_real_secs();
     return chunk;
 }
@@ -89,7 +93,8 @@ RxChunk Receiver::receive(std::size_t num_samples) {
 void Receiver::start() {
     uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
 
-    stream_cmd.stream_now = true;
+    stream_cmd.stream_now = false;
+    stream_cmd.time_spec = m_usrp->get_time_now() + uhd::time_spec_t(0.1);
 
     m_rx_streamer->issue_stream_cmd(stream_cmd);
 }
