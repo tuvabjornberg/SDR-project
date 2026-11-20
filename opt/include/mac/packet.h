@@ -35,10 +35,14 @@ class Packet {
   public:
     explicit Packet(uint16_t starting_sequence = 0);
 
+    // build packets from data, splitting into multiple packets if necessary
     std::vector<PacketStruct> build(const std::vector<uint8_t>& data, uint8_t flags);
 
-    std::optional<PacketStruct> parse(const std::vector<uint8_t>& raw_bits,
-                                      bool* checksum_ok = nullptr);
+    // single packet builder with existing sequence number
+    // data must be <= MAX_PAYLOAD_SIZE
+    PacketStruct build(const std::vector<uint8_t>& data, uint8_t flags, uint16_t sequence);
+
+    std::optional<PacketStruct> parse(const std::vector<uint8_t>& raw_bits);
     std::vector<uint8_t> packet_to_bits(const PacketStruct& packet);
 
   private:

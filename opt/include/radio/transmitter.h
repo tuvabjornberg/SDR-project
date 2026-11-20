@@ -14,16 +14,14 @@
 
 class Transmitter {
   public:
-    Transmitter();
-    Transmitter(uhd::usrp::multi_usrp::sptr usrp);
+    Transmitter(size_t num_tx_channels);
+    Transmitter(uhd::usrp::multi_usrp::sptr usrp, std::size_t num_tx_channels);
+    Transmitter(std::string serial, std::size_t num_tx_channels);
 
-    size_t send(const std::vector<std::complex<float>>& samples_tx0,
-                const std::vector<std::complex<float>>& samples_tx1);
-
-    // size_t send_mimo(const std::vector<std::complex<float>>& samples_tx0,
-    //                  const std::vector<std::complex<float>>& samples_tx1);
+    std::size_t send(const std::vector<std::vector<std::complex<float>>>& samples);
 
   private:
     uhd::usrp::multi_usrp::sptr m_usrp;
     uhd::tx_streamer::sptr m_tx_streamer;
+    size_t m_num_tx_channels;
 };

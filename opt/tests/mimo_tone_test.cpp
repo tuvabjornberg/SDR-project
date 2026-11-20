@@ -139,7 +139,11 @@ std::array<Cvec, 2> run_case(Transmitter& tx, Receiver& rx, bool use_tx0, bool u
         tone[n] = TONE_AMP * std::complex<float>(std::cos(ph), std::sin(ph));
     }
 
-    const std::size_t sent = tx.send(use_tx0 ? tone : zeros, use_tx1 ? tone : zeros);
+    std::vector<Cvec> tx_samples(2);
+    tx_samples[0] = use_tx0 ? tone : zeros;
+    tx_samples[1] = use_tx1 ? tone : zeros;
+    const std::size_t sent = tx.send(tx_samples);
+
     if (sent != TONE_SAMPLES)
         std::cerr << "[WARNING] TX sent " << sent << " of " << TONE_SAMPLES << " samples\n";
 
@@ -159,8 +163,8 @@ int main() {
     usrp->set_tx_subdev_spec(TX_SUBDEV);
     usrp->set_rx_subdev_spec(RX_SUBDEV);
 
-    Transmitter tx(usrp);
-    Receiver rx(usrp);
+    Transmitter tx(usrp, 2);
+    Receiver rx(usrp, 2);
 
     Stats m[2][2]; // m[rx][tx]
 

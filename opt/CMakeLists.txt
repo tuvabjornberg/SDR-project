@@ -133,22 +133,11 @@ target_link_libraries(pipeline
 
 if(BUILD_APPS)
 
-    add_executable(simo
-        tests/simo.cpp
+    add_executable(main
+        tests/main.cpp
     )
 
-    target_link_libraries(simo
-        PRIVATE
-            radio
-            pipeline
-            project_warnings
-    )
-
-    add_executable(mimo
-        tests/mimo.cpp
-    )
-
-    target_link_libraries(mimo
+    target_link_libraries(main
         PRIVATE
             radio
             pipeline
@@ -161,11 +150,11 @@ if(BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(test_main
+    add_executable(tone_test
         tests/mimo_tone_test.cpp
     )
 
-    target_link_libraries(test_main
+    target_link_libraries(tone_test
         PRIVATE
             radio
             pipeline
@@ -173,8 +162,8 @@ if(BUILD_TESTS)
     )
 
     add_test(
-        NAME mimo_tone
-        COMMAND test_main
+        NAME tone_test
+        COMMAND tone_test
     )
 
 endif()

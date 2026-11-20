@@ -15,16 +15,14 @@ struct PreambleDiagnostic {
 struct RxStats {
     std::size_t preambles_detected = 0;
     std::size_t packets_decoded = 0;
-    std::size_t checksum_failures = 0;
     std::size_t parse_failures = 0;
     std::size_t invalid_offsets = 0;
 };
 
 class RxPipeline {
   public:
-    std::vector<PacketStruct> decode_packets(const Synchronizer::Channels& captured);
-
-    // std::vector<PacketStruct> decode_packets(const std::vector<std::complex<float>>& samples);
+    std::vector<PacketStruct>
+    decode_packets(std::vector<std::vector<std::complex<float>>>& captured_samples);
 
     std::vector<uint8_t> packet_to_msg(std::vector<PacketStruct> received_packets);
 
@@ -37,9 +35,7 @@ class RxPipeline {
     }
 
   private:
-    //     std::vector<PacketStruct> demod_parse(const std::vector<std::complex<float>>& samples,
-    //                                           const std::vector<Detection>& detections);
-    std::vector<PacketStruct> demod_parse(const Synchronizer::Channels& filtered,
+    std::vector<PacketStruct> demod_parse(std::vector<std::vector<std::complex<float>>>& filtered,
                                           const std::vector<Detection>& detections);
 
     std::vector<PacketStruct> m_rejected; // header OK, checksum failed
