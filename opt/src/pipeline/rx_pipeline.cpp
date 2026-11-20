@@ -1,7 +1,6 @@
 #include "pipeline/rx_pipeline.h"
 
 #include "common/config.h"
-#include "common/settings.h"
 #include "mac/packet.h"
 #include "mac/preamble.h"
 #include "phy/filter.h"
@@ -42,18 +41,20 @@ std::vector<uint8_t> RxPipeline::packet_to_msg(std::vector<PacketStruct> receive
     return received_message;
 }
 
-std::vector<PacketStruct> RxPipeline::decode_packets(const Synchronizer::Channels& captured) {
-    Synchronizer synchronizer;
+std::vector<PacketStruct>
+RxPipeline::decode_packets(std::vector<std::vector<std::complex<float>>>& captured_samples) {
+    Synchronizer synchronizer(captured_samples.size());
 
     // Coarse CFO correction. Both RX channels share one LO, so the same value applies to both.
     // The per-packet estimate in the synchronizer only has to handle the residual.
     constexpr double CFO_HZ = 1780.0;
     const double w = -2.0 * M_PI * CFO_HZ / SAMPLE_FREQ;
 
-    Synchronizer::Channels filtered;
+    std::vector<std::vector<std::complex<float>>> filtered;
+    filtered.resize(captured_samples.size());
 
-    for (std::size_t ch = 0; ch < 2; ++ch) {
-        const auto& in = captured[ch];
+    for (std::size_t ch = 0; ch < captured_samples.size(); ++ch) {
+        const auto& in = captured_samples[ch];
 
         std::vector<std::complex<float>> corrected(in.size());
         for (std::size_t n = 0; n < in.size(); ++n) {
@@ -80,19 +81,26 @@ std::vector<PacketStruct> RxPipeline::decode_packets(const Synchronizer::Channel
               [](const PacketStruct& a, const PacketStruct& b) {
                   return a.header.sequence < b.header.sequence;
               });
-    m_stats.packets_decoded = received_packets.size();
-    std::cout << "[RX] Successfully decoded packets: " << received_packets.size() << '\n';
 
     return received_packets;
 }
 
-std::vector<PacketStruct> RxPipeline::demod_parse(const Synchronizer::Channels& filtered,
-                                                  const std::vector<Detection>& detections) {
+std::vector<PacketStruct>
+RxPipeline::demod_parse(std::vector<std::vector<std::complex<float>>>& filtered,
+                        const std::vector<Detection>& detections) {
     Packet builder;
     Demodulator demodulator;
     std::vector<PacketStruct> received_packets;
 
-    const std::size_t n_samples = std::min(filtered[0].size(), filtered[1].size());
+    if (filtered.empty()) {
+        return received_packets;
+    }
+
+    std::size_t n_samples = filtered[0].size();
+    for (const auto& channel : filtered) {
+        n_samples = std::min(n_samples, channel.size());
+    }
+
     const std::size_t max_samples = (MIN_PACKET_SIZE + MAX_PAYLOAD_SIZE * 8) * SAMPLES_PER_SYMBOL;
 
     for (const auto& detection : detections) {
@@ -106,11 +114,19 @@ std::vector<PacketStruct> RxPipeline::demod_parse(const Synchronizer::Channels& 
 
         // Maximal-ratio combining: weight each channel by conj(g) (its gain and phase estimated
         // on the preamble), after removing the residual CFO rotation.
-        const double gain_norm = std::norm(detection.g[0]) + std::norm(detection.g[1]) + 1e-30;
+        const double gain_norm = [&]() {
+            double norm = 0.0;
+
+            for (std::size_t ch = 0; ch < filtered.size(); ++ch) {
+                norm += std::norm(detection.g[ch]);
+            }
+
+            return norm + 1e-30;
+        }();
 
         for (std::size_t n = 0; n < combined.size(); ++n) {
             std::complex<double> sum{};
-            for (std::size_t ch = 0; ch < 2; ++ch) {
+            for (std::size_t ch = 0; ch < filtered.size(); ++ch) {
                 sum += std::conj(detection.g[ch]) *
                        std::complex<double>(filtered[ch][detection.offset + n]);
             }
@@ -120,16 +136,11 @@ std::vector<PacketStruct> RxPipeline::demod_parse(const Synchronizer::Channels& 
 
         auto bits = demodulator.bpsk_demodulate(combined, SAMPLES_PER_SYMBOL, 0);
 
-        bool ok = true;
-        const auto parsed_packet = builder.parse(bits, &ok);
-        if (!parsed_packet.has_value()) {
+        const auto parsed_packet = builder.parse(bits);
+        if (parsed_packet->valid) {
+            m_stats.packets_decoded++;
+        } else {
             ++m_stats.parse_failures;
-            continue;
-        }
-        if (!ok) {
-            ++m_stats.checksum_failures;
-            std::cerr << "[RX] Checksum failure, seq " << parsed_packet->header.sequence
-                      << ", metric " << detection.metric << '\n';
             m_rejected.push_back(*parsed_packet);
             continue;
         }
