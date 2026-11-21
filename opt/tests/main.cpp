@@ -13,6 +13,7 @@
 #include <complex>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -30,14 +31,18 @@ struct PacketLog {
 };
 
 struct TestConfig {
-    std::size_t num_packets = 50;
+    std::size_t num_packets = 100;
     std::size_t payload_size = 32;
     int packet_interval_ms = 10;
 
     std::string mode;
-    bool single_sdr;
+    bool single_sdr = false;
     std::string tx_serial;
     std::string rx_serial;
+
+    std::string out_dir = "tests/outlog"; // where the CSV files go
+    std::string label = "default";        // groups the runs of one experiment
+    std::string run_id;                   // set in main()
 };
 
 struct SdrDevices {
@@ -45,8 +50,51 @@ struct SdrDevices {
     std::unique_ptr<Receiver> rx;
 };
 
+struct PacketResult {
+    std::size_t sequence = 0;
+    bool present = false; // some decoded candidate carried this sequence number
+    bool valid = false;   // checksum passed
+    std::size_t packet_bits = 0;
+    std::size_t bit_errors = 0;
+    std::size_t preamble_errors = 0;
+    std::size_t seq_errors = 0;
+    std::size_t length_errors = 0;
+    std::size_t payload_errors = 0;
+    std::size_t checksum_errors = 0;
+    std::size_t rx_payload_bytes = 0;
+    std::vector<std::size_t>
+        error_positions; // bit index inside the packet (0 = first preamble bit)
+};
+
+struct RunInfo {
+    std::string run;
+    std::string label;
+    std::string mode;
+    std::string variant; // RX0 only / RX1 only / RX0+RX1 (MRC)
+    double tx_gain = 0.0;
+    double rx_gain = 0.0;
+    double sample_rate = 0.0;
+    double symbol_rate = 0.0;
+    std::size_t num_packets = 0;
+    std::size_t payload_bytes = 0;
+    std::size_t detected = 0;
+    std::size_t parse_failures = 0;
+    std::size_t invalid_seq = 0; // decoded candidates whose sequence number was out of range
+};
+
+struct RunSummary {
+    std::size_t present = 0;
+    std::size_t decoded_valid = 0; // checksum passed
+    std::size_t exact = 0;         // bit-exact
+    std::size_t lost = 0;          // no candidate at all for this sequence number
+    std::size_t bits_compared = 0;
+    std::size_t bit_errors = 0;
+    double pdr_valid = 0.0;
+    double pdr_exact = 0.0;
+    double ber = 0.0;
+};
+
 // Fixed seed
-std::mt19937 rng(12345);
 std::mt19937 noise_rng(987654);
 
 static void add_awgn(std::vector<std::complex<float>>& samples, double snr_db,
@@ -86,41 +134,101 @@ std::size_t bit_cnt(uint32_t value) {
     return count;
 }
 
-// void save_results_csv(const TestConfig& config, const TestResults& results,
-//                       const std::string& filename) {
-//     std::ofstream file(filename);
+inline const char* field_of(std::size_t bit, std::size_t payload_bytes) {
+    const std::size_t header_end = PREAMBLE_SIZE + HEADER_SIZE;
+    const std::size_t payload_end = header_end + payload_bytes * 8;
+    if (bit < PREAMBLE_SIZE)
+        return "preamble";
+    if (bit < PREAMBLE_SIZE + 16)
+        return "seq";
+    if (bit < header_end)
+        return "length";
+    if (bit < payload_end)
+        return "payload";
+    return "checksum";
+}
 
-//     file << "num_packets,payload_size,interval_ms,"
-//             "packets_tx,packets_detected,packets_decoded,"
-//             ",packets_lost,"
-//             "pdr,per,bit_errors,bits_compared,ber,"
-//             "rx_overflows,cpu_user,cpu_system\n";
+inline std::ofstream open_append(const std::string& path, const std::string& header) {
+    const bool fresh = !std::filesystem::exists(path) || std::filesystem::file_size(path) == 0;
+    std::ofstream f(path, std::ios::app);
+    if (fresh)
+        f << header << '\n';
+    return f;
+}
 
-//     file << config.num_packets << "," << config.payload_size << "," << config.packet_interval_ms
-//          << "," << results.packets_transmitted << "," << results.packets_detected << ","
-//          << results.packets_decoded << "," << results.packets_lost << "," << results.pdr << ","
-//          << results.per << "," << results.bit_errors << "," << results.bits_compared << ","
-//          << results.ber << "," << results.rx_overflows << "," << results.cpu_user_time << ","
-//          << results.cpu_system_time << "\n";
-// }
+inline const char* status_of(const PacketResult& r) {
+    if (!r.present)
+        return "lost";
+    if (!r.valid)
+        return "invalid";                             // checksum failed
+    return r.bit_errors == 0 ? "ok" : "valid_errors"; // checksum ok but something else is wrong
+}
 
-// void save_packet_log(const std::vector<PacketLog>& logs, const std::string& filename) {
-//     std::ofstream file(filename);
+// per_seq[s] is the result for transmitted sequence number s (present == false -> lost).
+inline RunSummary write_results(const std::string& out_dir, const RunInfo& info,
+                                const std::vector<PacketResult>& per_seq) {
+    std::filesystem::create_directories(out_dir);
 
-//     file << "sequence,tx_time,rx_time,latency_ms,received,bit_errors\n";
+    RunSummary s;
+    for (const auto& r : per_seq) {
+        if (!r.present)
+            continue;
+        ++s.present;
+        if (r.valid)
+            ++s.decoded_valid;
+        if (r.bit_errors == 0)
+            ++s.exact;
+        s.bits_compared += r.packet_bits;
+        s.bit_errors += r.bit_errors;
+    }
+    s.lost = info.num_packets - s.present;
+    s.pdr_valid = info.num_packets ? double(s.decoded_valid) / double(info.num_packets) : 0.0;
+    s.pdr_exact = info.num_packets ? double(s.exact) / double(info.num_packets) : 0.0;
+    s.ber = s.bits_compared ? double(s.bit_errors) / double(s.bits_compared) : 0.0;
 
-//     for (const auto& p : logs) {
+    const std::string key = info.run + "," + info.label + "," + info.mode + "," + info.variant;
+    const std::string key_cols = "run,label,mode,variant";
 
-//         double latency_ms = -1.0;
+    {
+        auto f = open_append(out_dir + "/summary.csv",
+                             key_cols + ",tx_gain,rx_gain,sample_rate,symbol_rate,payload_bytes,"
+                                        "num_packets,detected,present,decoded_valid,exact,lost,"
+                                        "parse_failures,invalid_seq,pdr_valid,pdr_exact,"
+                                        "bits_compared,bit_errors,ber");
+        f << key << ',' << info.tx_gain << ',' << info.rx_gain << ',' << info.sample_rate << ','
+          << info.symbol_rate << ',' << info.payload_bytes << ',' << info.num_packets << ','
+          << info.detected << ',' << s.present << ',' << s.decoded_valid << ',' << s.exact << ','
+          << s.lost << ',' << info.parse_failures << ',' << info.invalid_seq << ',' << s.pdr_valid
+          << ',' << s.pdr_exact << ',' << s.bits_compared << ',' << s.bit_errors << ',' << s.ber
+          << '\n';
+    }
 
-//         if (p.received) {
-//             latency_ms = (p.rx_time - p.tx_time) * 1000.0;
-//         }
+    {
+        auto f = open_append(out_dir + "/packets.csv",
+                             key_cols + ",sequence,status,valid,bit_errors,preamble_errors,"
+                                        "seq_errors,length_errors,payload_errors,checksum_errors,"
+                                        "packet_bits,rx_payload_bytes");
+        for (std::size_t seq = 0; seq < per_seq.size(); ++seq) {
+            const auto& r = per_seq[seq];
+            f << key << ',' << seq << ',' << status_of(r) << ',' << (r.present && r.valid ? 1 : 0)
+              << ',' << r.bit_errors << ',' << r.preamble_errors << ',' << r.seq_errors << ','
+              << r.length_errors << ',' << r.payload_errors << ',' << r.checksum_errors << ','
+              << r.packet_bits << ',' << r.rx_payload_bytes << '\n';
+        }
+    }
 
-//         file << p.sequence << "," << p.tx_time << "," << p.rx_time << "," << latency_ms << ","
-//              << p.received << "," << p.bit_errors << "\n";
-//     }
-// }
+    {
+        auto f = open_append(out_dir + "/bit_errors.csv", key_cols + ",sequence,bit_index,field");
+        for (std::size_t seq = 0; seq < per_seq.size(); ++seq) {
+            for (std::size_t pos : per_seq[seq].error_positions) {
+                f << key << ',' << seq << ',' << pos << ',' << field_of(pos, info.payload_bytes)
+                  << '\n';
+            }
+        }
+    }
+
+    return s;
+}
 
 void print_options() {
     std::cout << "Usage: ./main  [--loopback | --loopback-noise | --siso | --simo | --mimo]  "
@@ -144,6 +252,11 @@ void print_options() {
     std::cout << "  --rx-serial <RX_SERIAL> Specify the serial number of the RX SDR (required in "
                  "dual-node mode)"
               << std::endl;
+    std::cout << "  --out <dir>             Directory for the CSV files (default tests/outlog)"
+              << std::endl;
+    std::cout << "  --label <text>          Name of the experiment, stored in every CSV row"
+              << std::endl;
+    std::cout << "  --packets <text>        Number of packets to be transmitted (default is 100)" << std::endl;
 }
 
 bool parse_arguments(int argc, char** argv, TestConfig& options) {
@@ -170,6 +283,12 @@ bool parse_arguments(int argc, char** argv, TestConfig& options) {
             options.tx_serial = argv[++i];
         } else if (arg == "--rx-serial" && i + 1 < argc) {
             options.rx_serial = argv[++i];
+        } else if (arg == "--out" && i + 1 < argc) {
+            options.out_dir = argv[++i];
+        } else if (arg == "--label" && i + 1 < argc) {
+            options.label = argv[++i];
+        } else if (arg == "--packets" && i + 1 < argc) {
+            options.num_packets = static_cast<size_t>(std::stoull(argv[++i]));
         } else {
             std::cerr << "Unknown or incomplete argument: " << arg << '\n';
             print_options();
@@ -216,6 +335,53 @@ SdrDevices initialize_sdrs(const TestConfig& options, std::size_t num_tx_channel
     return devices;
 }
 
+inline PacketResult compare_packets(const PacketStruct& tx, const PacketStruct& rx) {
+    Packet builder;
+    const auto tx_bits = builder.packet_to_bits(tx);
+    const auto rx_bits = builder.packet_to_bits(rx);
+
+    PacketResult r;
+    r.sequence = tx.header.sequence;
+    r.present = true;
+    r.valid = rx.valid;
+    r.packet_bits = tx_bits.size();
+    r.rx_payload_bytes = rx.payload.size();
+
+    const std::size_t seq_end = PREAMBLE_SIZE + 16;
+    const std::size_t header_end = PREAMBLE_SIZE + HEADER_SIZE;
+    const std::size_t payload_end = header_end + tx.payload.size() * 8;
+
+    for (std::size_t i = 0; i < tx_bits.size(); ++i) {
+        const bool wrong = (i >= rx_bits.size()) || (rx_bits[i] != tx_bits[i]);
+        if (!wrong)
+            continue;
+
+        ++r.bit_errors;
+        r.error_positions.push_back(i);
+
+        if (i < PREAMBLE_SIZE)
+            ++r.preamble_errors;
+        else if (i < seq_end)
+            ++r.seq_errors;
+        else if (i < header_end)
+            ++r.length_errors;
+        else if (i < payload_end)
+            ++r.payload_errors;
+        else
+            ++r.checksum_errors;
+    }
+
+    return r;
+}
+
+// Several candidates can carry the same sequence number (duplicate detections, or a corrupted
+// sequence field). Keep the best one: checksum-valid first, then fewest bit errors.
+inline bool better(const PacketResult& a, const PacketResult& b) {
+    if (a.valid != b.valid)
+        return a.valid;
+    return a.bit_errors < b.bit_errors;
+}
+
 void evaluate(const char* name, bool use0, bool use1, const TestConfig& config,
               const std::vector<std::vector<uint8_t>>& transmitted_payloads,
               const std::vector<std::vector<std::complex<float>>>& captured_samples) {
@@ -239,111 +405,81 @@ void evaluate(const char* name, bool use0, bool use1, const TestConfig& config,
     auto all_packets = received_packets;
     all_packets.insert(all_packets.end(), rejected_packets.begin(), rejected_packets.end());
 
+    const auto& rx_stats = rx_pipeline.stats();
+
     std::cout << name << ": decoded " << received_packets.size() << " / " << config.num_packets
-              << ", parser failures " << rx_pipeline.stats().parse_failures << std::endl;
+              << ", parser failures " << rx_stats.parse_failures << std::endl;
 
-    std::size_t total_bits = 0;
-    std::size_t error_bits = 0;
+    std::vector<PacketResult> per_seq(config.num_packets);
+    for (std::size_t s = 0; s < per_seq.size(); ++s) {
+        per_seq[s].sequence = s;
+    }
 
-    if (config.mode == "siso" || (use0 && use1)) {
-        int invalid_seq = 0;
+    Packet builder;
+    int invalid_seq = 0;
 
-        for (const auto& packet : all_packets) {
-            const auto sequence = packet.header.sequence;
+    for (const auto& packet : all_packets) {
+        const std::size_t sequence = packet.header.sequence;
 
-            if (sequence < transmitted_payloads.size()) {
-                Packet builder;
-
-                auto original_packet = builder.build(
-                    transmitted_payloads[sequence], 0,
-                    sequence); // TODO: artificial payload creates 1 packet per message,
-                               // but if message is too long, it will be split into
-                               // multiple packets. Need to handle this case.
-
-                // std::cout << "Received packet: " << sequence
-                //           << ", payload size: " << packet.payload.size() << " bytes,
-                //           payload:
-                //           ";
-                // for (uint8_t byte : packet.payload) {
-                //     std::cout << std::hex << std::setw(2) << std::setfill('0')
-                //               << static_cast<int>(byte) << " ";
-                // }
-                // std::cout << std::dec << std::endl;
-
-                const auto& tx_payload = transmitted_payloads[sequence];
-                const auto& rx_payload = packet.payload;
-
-                if (transmitted_payloads[sequence].size() != rx_payload.size()) {
-                    std::cout << " -> PAYLOAD SIZE MISMATCH, "
-                              << "Expected: " << tx_payload.size() << ", Got: " << rx_payload.size()
-                              << std::endl;
-                }
-
-                size_t preamble_errors = __builtin_popcount(
-                    static_cast<unsigned int>(original_packet.preamble ^ packet.preamble));
-                size_t header_errors = __builtin_popcount(static_cast<unsigned int>(
-                    original_packet.header.sequence ^ packet.header.sequence));
-                size_t length_flags_errors = __builtin_popcount(static_cast<unsigned int>(
-                    original_packet.header.length_flags ^ packet.header.length_flags));
-                size_t checksum_errors = __builtin_popcount(
-                    static_cast<unsigned int>(original_packet.checksum ^ packet.checksum));
-                std::size_t payload_errors = 0;
-                for (std::size_t j = 0; j < tx_payload.size(); ++j) {
-                    payload_errors += __builtin_popcount(
-                        static_cast<unsigned int>(tx_payload[j] ^ rx_payload[j]));
-                }
-
-                size_t packet_errors = preamble_errors + header_errors + length_flags_errors +
-                                       payload_errors + checksum_errors;
-
-                const std::size_t packet_bits =
-                    tx_payload.size() * 8 + PREAMBLE_SIZE + HEADER_SIZE + CHECKSUM_SIZE;
-
-                total_bits += packet_bits;
-                error_bits += packet_errors;
-
-                if (packet_errors != 0) {
-                    std::cout << " -> MISMATCH for packet " << sequence
-                              << ", valid : " << packet.valid << ""
-                              << " \n total bit errors: " << packet_errors << " of "
-                              << packet_bits
-                              //   << " bits\n preamble: " << preamble_errors
-                              //   << "\n header: " << header_errors
-                              //   << "\n length_flags: " << length_flags_errors
-                              //   << "\n payload: " << payload_errors
-                              //   << "\n checksum: " << checksum_errors
-                              << std::endl;
-                }
-
-            } else {
-                std::cout << "Received packet with invalid sequence: " << sequence << '\n';
-                ++invalid_seq;
-            }
+        if (sequence >= transmitted_payloads.size() || sequence >= per_seq.size()) {
+            ++invalid_seq;
+            continue;
         }
 
+        const auto original =
+            builder.build(transmitted_payloads[sequence], 0, static_cast<uint16_t>(sequence));
+        PacketResult r = compare_packets(original, packet);
+        if (r.bit_errors != 0) {
+            std::cout << " -> MISMATCH for packet " << sequence << ", valid: " << packet.valid
+                      << "\n total bit errors: " << r.bit_errors << " of " << r.packet_bits
+                      << "\n preamble: " << r.preamble_errors << ", seq: " << r.seq_errors
+                      << ", length: " << r.length_errors << ", payload: " << r.payload_errors
+                      << ", checksum: " << r.checksum_errors << std::endl;
+        }
+
+        if (!per_seq[sequence].present || better(r, per_seq[sequence]))
+            per_seq[sequence] = std::move(r);
+    }
+
+    RunInfo info;
+    info.run = config.run_id;
+    info.label = config.label;
+    info.mode = config.mode;
+    info.variant = name;
+    info.tx_gain = TX_GAIN;
+    info.rx_gain = RX_GAIN;
+    info.sample_rate = SAMPLE_FREQ;
+    info.symbol_rate = SYMBOL_RATE;
+    info.num_packets = config.num_packets;
+    info.payload_bytes = config.payload_size;
+    info.detected = rx_stats.preambles_detected;
+    info.parse_failures = rx_stats.parse_failures;
+    info.invalid_seq = invalid_seq;
+
+    const RunSummary s = write_results(config.out_dir, info, per_seq);
+
+    if (config.mode == "siso" || (use0 && use1)) {
         std::cout << "\n========================================\n";
         std::cout << "TEST RESULTS\n";
         std::cout << "========================================\n";
 
-        const auto& rx_stats = rx_pipeline.stats();
-        std::cout << "Packets transmitted:          " << config.num_packets << std::endl;
-        std::cout << "Detected packets:             " << rx_stats.preambles_detected << std::endl;
-        std::cout << "Successfully decoded packets: " << rx_stats.packets_decoded << std::endl;
-        std::cout << "Parser failures:              " << rx_stats.parse_failures << std::endl;
-        std::cout << "Packets lost:                 "
-                  << config.num_packets - rx_stats.packets_decoded << std::endl;
-        std::cout << "Packets w. invalid sequence nr: " << invalid_seq << std::endl;
+        std::cout << "Packets transmitted:                  " << config.num_packets << std::endl;
+        std::cout << "Detected preambles:                   " << rx_stats.preambles_detected
+                  << std::endl;
+        std::cout << "Successfully decoded packets:         " << s.decoded_valid << std::endl;
+        std::cout << "Parser failures:                      " << rx_stats.parse_failures
+                  << std::endl;
+        std::cout << "Packets lost:                         " << s.lost << std::endl;
+        std::cout << "Packets with invalid sequence:        " << invalid_seq << std::endl;
+        std::cout << "Duplicate sequence (nothing decoded): "
+                  << rx_stats.preambles_detected - s.present - invalid_seq << std::endl;
 
-        const double pdr = static_cast<double>(rx_stats.packets_decoded) / config.num_packets;
+        std::cout << "\nPDR (checksum ok): " << s.pdr_valid * 100.0 << " %" << std::endl;
+        std::cout << "PDR (bit-exact):   " << s.pdr_exact * 100.0 << " %" << std::endl;
 
-        std::cout << "\nPDR: " << pdr * 100.0 << " %" << std::endl;
-        std::cout << "PER: " << (1.0 - pdr) * 100.0 << " %" << std::endl;
-
-        const double ber = total_bits > 0 ? static_cast<double>(error_bits) / total_bits : 0.0;
-
-        std::cout << "\nTotal bits compared: " << total_bits << std::endl;
-        std::cout << "Bit errors:          " << error_bits << std::endl;
-        std::cout << "BER:                 " << ber * 100.0 << " %" << std::endl;
+        std::cout << "\nBits compared: " << s.bits_compared << std::endl;
+        std::cout << "Bit errors:    " << s.bit_errors << std::endl;
+        std::cout << "BER:           " << s.ber * 100.0 << " %" << std::endl;
     }
 };
 
@@ -379,8 +515,6 @@ int run_loopback_test(const TestConfig& config, bool use_noise) {
         -6.0,         // 3: medium
         -18.0         // 4: heavy
     };
-
-    // const std::vector<double> snr_db = {20.0, 20.0, -3.0, -6.0, -18.0};
 
     for (std::size_t i = 0; i < config.num_packets; ++i) {
         auto payload = make_test_payload(i, config.payload_size);
@@ -443,12 +577,12 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    config.run_id = std::to_string(std::time(nullptr));
+
     std::string mode = config.mode;
     std::string tx_serial = config.tx_serial;
     std::string rx_serial = config.rx_serial;
 
-    // const std::size_t num_tx_channels = (mode == "mimo") ? 2 : 1;
-    // const std::size_t num_rx_channels = (mode == "siso") ? 1 : 2;
     const std::size_t num_tx_channels =
         (mode == "mimo" || (mode == "simo" && config.single_sdr)) ? 2 : 1;
     const std::size_t num_rx_channels = (mode == "siso") ? 1 : 2;
@@ -499,22 +633,23 @@ int main(int argc, char** argv) {
     }
 
     // RX
-    // std::array<std::vector<std::complex<float>>, 2> captured_samples; // one buffer per RX
-    // channel
-    // for (auto& c : captured_samples)
-    //     c.reserve(static_cast<std::size_t>(settings::RX_CAPTURE_SECONDS * SAMPLE_FREQ * 1.2));
+    constexpr std::size_t LEAD_IN = 2400, TAIL = 400;
+    const double per_packet_s = (LEAD_IN + TAIL) / double(SAMPLE_FREQ) +
+                                (MIN_PACKET_SIZE + config.payload_size * 8) / double(SYMBOL_RATE) +
+                                settings::TX_DELAY_MS / 1000.0;
+    const double capture_s = config.num_packets * per_packet_s * 1.7 + 2.0; // margin
+    const auto capture_duration = std::chrono::duration<double>(capture_s);
 
     std::vector<std::vector<std::complex<float>>> captured_samples(num_rx_channels);
     for (auto& channel : captured_samples) {
-        channel.reserve(static_cast<std::size_t>(settings::RX_CAPTURE_SECONDS * SAMPLE_FREQ * 1.2));
+        channel.reserve(static_cast<std::size_t>(capture_s * SAMPLE_FREQ * 1.2));
     }
 
     rx->start();
 
     auto start = std::chrono::steady_clock::now();
     std::thread rx_thread([&]() {
-        while (std::chrono::steady_clock::now() - start <
-               std::chrono::seconds(settings::RX_CAPTURE_SECONDS)) {
+        while (std::chrono::steady_clock::now() - start < capture_duration) {
 
             auto chunk = rx->receive(settings::RX_CHUNK_SIZE);
 
@@ -530,18 +665,13 @@ int main(int argc, char** argv) {
     // TX
     TxPipeline tx_pipeline;
     size_t num_sent;
-    constexpr std::size_t LEAD_IN = 2400, TAIL = 400;
+    auto t0 = std::chrono::steady_clock::now();
 
     for (std::size_t i = 0; i < config.num_packets; i++) {
         auto samples = tx_pipeline.generate_samples(transmitted_payloads[i]);
         // Inital and final zeros to avoid filter transients
         samples.insert(samples.begin(), LEAD_IN, std::complex<float>{0.f, 0.f});
         samples.insert(samples.end(), TAIL, std::complex<float>{0.f, 0.f});
-
-        // packet_logs[i].sequence = i;
-        // packet_logs[i].tx_time =
-        //     std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch())
-        //         .count();
 
         std::vector<std::vector<std::complex<float>>> tx_samples;
         tx_samples.resize(num_tx_channels);
@@ -565,6 +695,9 @@ int main(int argc, char** argv) {
     std::cout << "[OK] Transmission complete" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
+    double tx_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    std::cout << "TX loop took " << tx_s << " s\n";
+
     // RX
     rx->stop();
     rx_thread.join();
@@ -577,8 +710,8 @@ int main(int argc, char** argv) {
         evaluate("RX1 only", false, true, config, transmitted_payloads, captured_samples);
         evaluate("RX0+RX1 (MRC)", true, true, config, transmitted_payloads, captured_samples);
     } else if (mode == "mimo") {
-        evaluate("RX0 only", true, false, config, transmitted_payloads, captured_samples);
-        evaluate("RX1 only", false, true, config, transmitted_payloads, captured_samples);
+        // evaluate("RX0 only", true, false, config, transmitted_payloads, captured_samples);
+        // evaluate("RX1 only", false, true, config, transmitted_payloads, captured_samples);
         evaluate("RX0+RX1 (MRC)", true, true, config, transmitted_payloads, captured_samples);
     } else if (mode == "loopback" || mode == "loopback-noise") {
         evaluate(mode.data(), true, true, config, transmitted_payloads, captured_samples);
