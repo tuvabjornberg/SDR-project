@@ -144,6 +144,39 @@ if(BUILD_APPS)
             project_warnings
     )
 
+    add_executable(transmitter
+        apps/transmitter.cpp
+    )
+
+    target_link_libraries(transmitter
+        PRIVATE
+            radio
+            pipeline
+            project_warnings
+    )
+
+    add_executable(receiver
+        apps/receiver.cpp
+    )
+
+    target_link_libraries(receiver
+        PRIVATE
+            radio
+            pipeline
+            project_warnings
+    )
+
+    add_executable(txrx
+        apps/txrx.cpp
+    )
+
+    target_link_libraries(txrx
+        PRIVATE
+            radio
+            pipeline
+            project_warnings
+    )
+
 endif()
 
 if(BUILD_TESTS)
