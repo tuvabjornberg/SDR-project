@@ -70,7 +70,7 @@ Transmitter::Transmitter(uhd::usrp::multi_usrp::sptr usrp, std::size_t num_tx_ch
     m_tx_streamer = m_usrp->get_tx_stream(stream_args);
 }
 
-Transmitter::Transmitter(std::string serial, std::size_t num_tx_channels)
+Transmitter::Transmitter(std::string serial, std::size_t num_tx_channels, double gain)
     : m_num_tx_channels(num_tx_channels) {
     uhd::usrp::multi_usrp::sptr usrp = uhd::usrp::multi_usrp::make("serial=" + serial);
     m_usrp = usrp;
@@ -86,7 +86,7 @@ Transmitter::Transmitter(std::string serial, std::size_t num_tx_channels)
     for (std::size_t ch = 0; ch < m_num_tx_channels; ++ch) {
         usrp->set_tx_rate(TX_RATE, ch);
         usrp->set_tx_freq(TX_FREQ, ch);
-        usrp->set_tx_gain(TX_GAIN, ch);
+        usrp->set_tx_gain(gain, ch);
         usrp->set_tx_bandwidth(TX_BANDWIDTH, ch);
         usrp->set_tx_antenna(TX_ANT, ch);
 

@@ -71,154 +71,16 @@ std::vector<std::complex<float>> TxPipeline::generate_samples(const std::vector<
                   << std::endl;
 #endif
 
-        // if (packet.header.sequence > 195) {
-        //     std::cout << "\tPacket " << i << ": Sequence = " << packet.header.sequence
-        //               << ", Preamble: 0x" << std::hex << std::setw(8) << std::setfill('0')
-        //               << packet.preamble << std::dec << ", Length = " << get_length(packet.header)
-        //               << ", Flags: 0x" << std::hex
-        //               << static_cast<unsigned>(get_flags(packet.header)) << std::dec
-        //               << ", Checksum: 0x" << std::hex << std::setw(8) << std::setfill('0')
-        //               << packet.checksum << std::dec << std::endl;
-
-        //     std::bitset<32> payload_bits;
-        //     for (std::size_t bit = 0; bit < std::min<std::size_t>(32, packet.payload.size() * 8);
-        //          ++bit) {
-        //         const std::size_t byte_index = bit / 8;
-        //         const std::size_t bit_index = bit % 8;
-        //         const bool value = (packet.payload[byte_index] >> (7 - bit_index)) & 0x1u;
-        //         payload_bits.set(31 - bit, value);
-        //     }
-        //     std::cout << "\tPayload:  " << payload_bits << std::endl;
-        // }
-
         auto bits = m_builder.packet_to_bits(packet);
 
-#if VERBOSE
-        // std::cout << "\n[Packet to bits]\n";
-        // std::cout << "\tpre: ";
-        // for (std::size_t i = 0; i < 32; ++i) {
-        //     std::cout << static_cast<int>(bits[i]);
-        // }
-        // std::cout << "\n\tseq: ";
-        // for (std::size_t i = 32; i < 48; ++i) {
-        //     std::cout << static_cast<int>(bits[i]);
-        // }
-        // std::cout << "\n\tlengthflags: ";
-        // for (std::size_t i = 48; i < 64; ++i) {
-        //     std::cout << static_cast<int>(bits[i]);
-        // }
-        // std::cout << "\n\tchecksum: ";
-        // for (std::size_t i = 152; i < 184; ++i) {
-        //     std::cout << static_cast<int>(bits[i]);
-        // }
-        // std::cout << "\n";
-
-        // // std::cout << '\n';
-        // std::cout << "Complete pre+head:";
-        // for (size_t i = 0; i < 64; i++) {
-        //     std::cout << static_cast<int>(bits[i]);
-        // }
-        // std::cout << '\n';
-        // std::cout << '\n';
-#endif
-
         auto samples = modulator.bpsk_modulate(bits, SAMPLES_PER_SYMBOL);
-
-#if VERBOSE
-        // std::cout << "[After mod]\n";
-        // std::cout << "\tpre: ";
-        // for (size_t bit = 0; bit < 32; ++bit) {
-        //     std::cout << (samples[bit * SAMPLES_PER_SYMBOL].real() > 0.0f);
-        // }
-        // std::cout << '\n';
-        // std::cout << "\tseq: ";
-        // for (size_t bit = 32; bit < 48; ++bit) {
-        //     std::cout << (samples[bit * SAMPLES_PER_SYMBOL].real() > 0.0f);
-        // }
-        // std::cout << '\n';
-        // std::cout << "\tlengthflags: ";
-        // for (size_t bit = 48; bit < 64; ++bit) {
-        //     std::cout << (samples[bit * SAMPLES_PER_SYMBOL].real() > 0.0f);
-        // }
-        // std::cout << '\n';
-        // std::cout << "\tchecksum: ";
-        // for (size_t bit = 152; bit < 184; ++bit) {
-        //     std::cout << (samples[bit * SAMPLES_PER_SYMBOL].real() > 0.0f);
-        // }
-        // std::cout << '\n';
-
-        // std::cout << "[MODULATION]" << std::endl;
-        // std::cout << "\tBits:    " << bits.size() << std::endl;
-        // std::cout << "\tSamples: " << samples.size() << std::endl;
-#endif
 
         samples = tx_filter.filter(
             samples, tx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
                                                   FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
 
-#if VERBOSE
-        // std::cout << "[After filter]\n";
-        // const size_t FILTER_DELAY = 32;
-        // std::cout << "\tpre: ";
-        // for (size_t bit = 0; bit < 32; ++bit) {
-        //     size_t idx = FILTER_DELAY + bit * SAMPLES_PER_SYMBOL;
-
-        //     std::cout << (samples[idx].real() >= 0.0f);
-        // }
-        // std::cout << '\n';
-        // std::cout << "\tseq: ";
-        // for (size_t bit = 32; bit < 48; ++bit) {
-        //     size_t idx = FILTER_DELAY + bit * SAMPLES_PER_SYMBOL;
-
-        //     std::cout << (samples[idx].real() >= 0.0f);
-        // }
-        // std::cout << '\n';
-        // std::cout << "\tlengthflags: ";
-        // for (size_t bit = 48; bit < 64; ++bit) {
-        //     size_t idx = FILTER_DELAY + bit * SAMPLES_PER_SYMBOL;
-
-        //     std::cout << (samples[idx].real() >= 0.0f);
-        // }
-        // std::cout << '\n';
-        // std::cout << "\tchecksum: ";
-        // for (size_t bit = 152; bit < 184; ++bit) {
-        //     size_t idx = FILTER_DELAY + bit * SAMPLES_PER_SYMBOL;
-
-        //     std::cout << (samples[idx].real() >= 0.0f);
-        // }
-        // std::cout << '\n';
-
-        std::cout << "[Filter]" << std::endl;
-        std::cout << "\tBits:    " << bits.size() << std::endl;
-        std::cout << "\tSamples: " << samples.size() << std::endl;
-#endif
-
         normalize(samples);
 
-#if VERBOSE
-        // std::cout << "[After normalize]\n";
-        // std::cout << "\tpre: ";
-        // for (size_t bit = 0; bit < 32; ++bit) {
-        //     size_t idx = FILTER_DELAY + bit * SAMPLES_PER_SYMBOL;
-
-        //     std::cout << (samples[idx].real() >= 0.0f);
-        // }
-        // std::cout << '\n';
-        // std::cout << "\tseq: ";
-        // for (size_t bit = 32; bit < 48; ++bit) {
-        //     size_t idx = FILTER_DELAY + bit * SAMPLES_PER_SYMBOL;
-
-        //     std::cout << (samples[idx].real() >= 0.0f);
-        // }
-        // std::cout << '\n';
-        // std::cout << "\tlengthflags: ";
-        // for (size_t bit = 48; bit < 64; ++bit) {
-        //     size_t idx = FILTER_DELAY + bit * SAMPLES_PER_SYMBOL;
-
-        //     std::cout << (samples[idx].real() >= 0.0f);
-        // }
-        // std::cout << '\n';
-#endif
         tx_samples.insert(tx_samples.end(), samples.begin(), samples.end());
 
         i++;

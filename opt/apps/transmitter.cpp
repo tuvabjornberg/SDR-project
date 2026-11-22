@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     std::cout << "Payload size:  " << config.payload_size << " bytes" << std::endl;
 
     // Initialize TX SDR only
-    auto tx = std::make_unique<Transmitter>(config.tx_serial, config.tx_channels);
+    auto tx = std::make_unique<Transmitter>(config.tx_serial, config.tx_channels, config.tx_gain);
 
     // Artificial payload
     std::vector<std::vector<uint8_t>> transmitted_payloads;
@@ -31,6 +31,10 @@ int main(int argc, char** argv) {
 
     TxPipeline tx_pipeline;
     size_t num_sent;
+
+    std::cout << "[TX] SDR initialized. Starting transmission in 3 seconds..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(4));
+    std::cout << "[TX] Transmission started" << std::endl;
 
     const auto t0 = std::chrono::steady_clock::now();
 
