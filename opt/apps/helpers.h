@@ -98,7 +98,7 @@ struct RunSummary {
 
 // Artificial payload
 // Counter that wraps after 255
-std::vector<uint8_t> make_test_payload(std::size_t sequence, std::size_t payload_size) {
+inline std::vector<uint8_t> make_test_payload(std::size_t sequence, std::size_t payload_size) {
     std::vector<uint8_t> payload(payload_size);
 
     for (std::size_t i = 0; i < payload_size; ++i) {
@@ -108,7 +108,7 @@ std::vector<uint8_t> make_test_payload(std::size_t sequence, std::size_t payload
     return payload;
 }
 
-std::size_t bit_cnt(uint32_t value) {
+inline std::size_t bit_cnt(uint32_t value) {
     std::size_t count = 0;
 
     while (value != 0) {
@@ -282,8 +282,15 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
     RxPipeline rx_pipeline;
 
     std::cout << "Decoding packets started" << std::endl;
+    const auto r0 = std::chrono::steady_clock::now();
+
     auto received_packets = rx_pipeline.decode_packets(in);
     auto rejected_packets = rx_pipeline.rejected();
+
+    const auto r1 = std::chrono::steady_clock::now();
+    std::cout << "RX decoding took " << std::chrono::duration<double>(r1 - r0).count() << " s\n";
+
+    std::cout << "Finished decoding, starting comparison" << std::endl;
 
     auto all_packets = received_packets;
     all_packets.insert(all_packets.end(), rejected_packets.begin(), rejected_packets.end());
@@ -364,6 +371,10 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
         std::cout << "Bit errors:    " << s.bit_errors << std::endl;
         std::cout << "BER:           " << s.ber * 100.0 << " %" << std::endl;
     }
+
+    const auto r2 = std::chrono::steady_clock::now();
+    std::cout << "RX comparison and write ti csv took "
+              << std::chrono::duration<double>(r2 - r1).count() << " s\n";
 };
 
 enum class Node { TX, RX, TXRX };
