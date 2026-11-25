@@ -55,6 +55,7 @@ int main(int argc, char** argv) {
     }
 
     rx->stop();
+    rx.reset();
 
     std::cout << "\n[OK] RX capture complete\n";
     std::cout << "Captured samples: " << captured_samples[0].size() << '\n';

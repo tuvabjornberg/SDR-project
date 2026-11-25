@@ -389,9 +389,9 @@ def plot_packet_bit_errors(csv_path="tests/outlog/invalid_packets.csv"):
 
 
 if __name__ == "__main__":
-    plot_individual_packets("baseline-2sdr/ind_packets.csv")
-    plot_summary_metrics("baseline-2sdr/tot_packets.csv")
-    plot_packet_comparison("baseline-2sdr/tot_packets.csv")
-    plot_preamble_bit_errors("baseline-2sdr/invalid_packets.csv")
+    plot_individual_packets("improved-sync-2sdr/run3-2m/ind_packets.csv")
+    plot_summary_metrics("improved-sync-2sdr/run3-2m/tot_packets.csv")
+    plot_packet_comparison("improved-sync-2sdr/run3-2m/tot_packets.csv")
+    plot_preamble_bit_errors("improved-sync-2sdr/run3-2m/invalid_packets.csv")
     # plot_preamble_hamming("baseline-2sdr/invalid_packets.csv")
     # plot_packet_bit_errors("baseline-2sdr/invalid_packets.csv")

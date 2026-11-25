@@ -1,0 +1,14 @@
+run,label,mode,variant,sequence,bit_index,field
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,246,payload
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,253,payload
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,254,payload
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,269,payload
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,286,payload
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,288,payload
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,295,payload
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,302,payload
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,325,checksum
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,332,checksum
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,339,checksum
+1795213264,100cm,mimo,RX0+RX1 (MRC),261,346,checksum
+1795213876,150cm,mimo,RX0+RX1 (MRC),271,265,payload
