@@ -1,42 +1,98 @@
 #include "phy/synchronizer.h"
 
-#include "common/config.h"
 #include "mac/preamble.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
-PreambleHit Synchronizer::correlate(std::size_t off) const {
-    using Cd = std::complex<double>;
-    constexpr std::size_t H = PREAMBLE_SIZE / 2;
-    const std::size_t num_channels = m_buffer.size();
-    std::vector<Cd> c1(num_channels, Cd{});
-    std::vector<Cd> c2(num_channels, Cd{});
-    double energy = 0.0;
+namespace {
+constexpr std::array<double, PREAMBLE_SIZE> PREAMBLE_SIGNS = [] {
+    std::array<double, PREAMBLE_SIZE> signs{};
 
     for (std::size_t i = 0; i < PREAMBLE_SIZE; ++i) {
-        const double s = ((BARKER_PREAMBLE >> (PREAMBLE_SIZE - 1 - i)) & 1U) ? 1.0 : -1.0;
+        signs[i] = ((BARKER_PREAMBLE >> (PREAMBLE_SIZE - 1 - i)) & 1U) ? 1.0 : -1.0;
+    }
+
+    return signs;
+}();
+} // namespace
+
+float Synchronizer::calculate_energy(std::size_t off) {
+    constexpr std::size_t LAST_TAP = (PREAMBLE_SIZE - 1) * SAMPLES_PER_SYMBOL;
+
+    const std::size_t phase = off % SAMPLES_PER_SYMBOL;
+    auto& state = m_energy_states[phase];
+
+    if (!state.initialized || state.offset + SAMPLES_PER_SYMBOL != off) {
+        state.energy = 0.0f;
+
+        for (std::size_t i = 0; i < PREAMBLE_SIZE; ++i) {
+            for (std::size_t ch = 0; ch < m_buffer.size(); ++ch) {
+                state.energy += std::norm(m_buffer[ch][off + i * SAMPLES_PER_SYMBOL]);
+            }
+        }
+
+        state.offset = off;
+        state.initialized = true;
+
+        return state.energy;
+    }
+
+    // Remove the oldest samples and add the newest samples.
+    for (std::size_t ch = 0; ch < m_buffer.size(); ++ch) {
+        const auto& old_sample = m_buffer[ch][off - SAMPLES_PER_SYMBOL];
+
+        const auto& new_sample = m_buffer[ch][off + LAST_TAP];
+
+        state.energy -= std::norm(old_sample);
+        state.energy += std::norm(new_sample);
+    }
+
+    state.offset = off;
+    return state.energy;
+}
+
+PreambleHit Synchronizer::correlate(std::size_t off) {
+    constexpr std::size_t H = PREAMBLE_SIZE / 2;
+    const std::size_t num_channels = m_buffer.size();
+
+    std::array<std::complex<float>, MAX_RX_CHANNELS> c1{};
+    std::array<std::complex<float>, MAX_RX_CHANNELS> c2{};
+
+    // float energy = 0.0f;
+
+    for (std::size_t i = 0; i < PREAMBLE_SIZE; ++i) {
+        const std::size_t half = (i < H) ? 0 : 1;
+
         for (std::size_t ch = 0; ch < num_channels; ++ch) {
-            const Cd y = m_buffer[ch][off + i * SAMPLES_PER_SYMBOL];
-            (i < H ? c1[ch] : c2[ch]) += y * s;
-            energy += std::norm(y);
+            const std::complex<float> y = m_buffer[ch][off + i * SAMPLES_PER_SYMBOL];
+
+            if (PREAMBLE_SIGNS[i] > 0.0)
+                (half == 0 ? c1[ch] : c2[ch]) += y;
+            else
+                (half == 0 ? c1[ch] : c2[ch]) -= y;
+
+            // energy += std::norm(y);
         }
     }
+    const float energy = calculate_energy(off);
 
     const double span_s = double(H * SAMPLES_PER_SYMBOL) / SAMPLE_FREQ;
 
-    Cd cross{};
+    std::complex<float> cross{};
     for (std::size_t ch = 0; ch < num_channels; ++ch) {
         cross += c2[ch] * std::conj(c1[ch]); // channel phase cancels, CFO adds up
     }
-    const double cfo = std::arg(cross) / (2.0 * M_PI * span_s);  // +-7.8 kHz range
-    const Cd back = std::polar(1.0, -2.0 * M_PI * cfo * span_s); // centre -> start
+    const double cfo = std::arg(cross) / (2.0 * M_PI * span_s); // +-7.8 kHz range
+    const float phase = -2.0f * static_cast<float>(M_PI) * cfo * span_s;
+    const std::complex<float> back{std::cos(phase), std::sin(phase)};
 
     PreambleHit h{};
-    h.g.resize(num_channels);
+
     double csum = 0.0;
     for (std::size_t ch = 0; ch < num_channels; ++ch) {
-        const Cd c = c1[ch] + c2[ch];
+        const std::complex<float> c = c1[ch] + c2[ch];
         csum += std::norm(c);
         h.g[ch] = c * back;
     }
@@ -99,6 +155,9 @@ Synchronizer::process(const std::vector<std::vector<std::complex<float>>>& sampl
         for (auto& channel : m_buffer) {
             channel.erase(channel.begin(), channel.begin() + drop);
         }
+        for (auto& state : m_energy_states) {
+            state.initialized = false;
+        }
         m_absolute_start += drop;
         m_next_candidate = 0;
     }
@@ -109,6 +168,8 @@ Synchronizer::process(const std::vector<std::vector<std::complex<float>>>& sampl
 void Synchronizer::reset() {
     for (auto& b : m_buffer)
         b.clear();
+    for (auto& state : m_energy_states)
+        state = {};
     m_absolute_start = 0;
     m_next_candidate = 0;
 }
