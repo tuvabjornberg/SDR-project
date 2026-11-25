@@ -16,8 +16,8 @@ class Transmitter {
   public:
     Transmitter(size_t num_tx_channels);
     Transmitter(uhd::usrp::multi_usrp::sptr usrp, std::size_t num_tx_channels);
-    Transmitter(std::string serial, std::size_t num_tx_channels, double gain);
-    
+    Transmitter(std::string serial, std::size_t num_tx_channels);
+
     std::size_t send(const std::vector<std::vector<std::complex<float>>>& samples);
 
   private:

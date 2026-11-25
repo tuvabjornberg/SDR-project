@@ -45,9 +45,6 @@ struct TestConfig {
 
     std::size_t LEAD_IN = 2400;
     std::size_t TAIL = 400;
-
-    double tx_gain = TX_GAIN;
-    double rx_gain = RX_GAIN;
 };
 
 struct SdrDevices {
@@ -184,7 +181,7 @@ inline RunSummary write_results(const std::string& out_dir, const RunInfo& info,
                                         "num_packets,detected,present,decoded_valid,exact,lost,"
                                         "parse_failures,invalid_seq,pdr_valid,pdr_exact,"
                                         "bits_compared,bit_errors,ber");
-        f << key << ',' << info.tx_gain << ',' << info.rx_gain << ',' << info.sample_rate << ','
+        f << key << ',' << TX_GAIN << ',' << RX_GAIN << ',' << info.sample_rate << ','
           << info.symbol_rate << ',' << info.payload_bytes << ',' << info.num_packets << ','
           << info.detected << ',' << s.present << ',' << s.decoded_valid << ',' << s.exact << ','
           << s.lost << ',' << info.parse_failures << ',' << info.invalid_seq << ',' << s.pdr_valid
@@ -339,8 +336,8 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
     info.label = config.label;
     info.mode = config.mode;
     info.variant = name;
-    info.tx_gain = config.tx_gain;
-    info.rx_gain = config.rx_gain;
+    info.tx_gain = TX_GAIN;
+    info.rx_gain = RX_GAIN;
     info.sample_rate = SAMPLE_FREQ;
     info.symbol_rate = SYMBOL_RATE;
     info.num_packets = config.num_packets;
@@ -474,10 +471,6 @@ inline bool parse_arguments(int argc, char** argv, TestConfig& options, Node nod
             options.rx_serial = argv[++i];
         } else if (arg == "--rx-channels" && i + 1 < argc) {
             options.rx_channels = static_cast<size_t>(std::stoull(argv[++i]));
-        } else if (arg == "--tx-gain" && i + 1 < argc) {
-            options.tx_gain = std::stod(argv[++i]);
-        } else if (arg == "--rx-gain" && i + 1 < argc) {
-            options.rx_gain = std::stod(argv[++i]);
         } else if (arg == "--out" && i + 1 < argc) {
             options.out_dir = argv[++i];
         } else if (arg == "--label" && i + 1 < argc) {

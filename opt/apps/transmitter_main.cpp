@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     std::cout << "Payload size:  " << config.payload_size << " bytes" << std::endl;
 
     // Initialize TX SDR only
-    auto tx = std::make_unique<Transmitter>(config.tx_serial, config.tx_channels, config.tx_gain);
+    auto tx = std::make_unique<Transmitter>(config.tx_serial, config.tx_channels);
 
     // Artificial payload
     std::vector<std::vector<uint8_t>> transmitted_payloads;
