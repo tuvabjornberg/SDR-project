@@ -3,6 +3,7 @@
 #include "mac/packet.h"
 #include "phy/synchronizer.h"
 
+#include <chrono>
 #include <complex>
 #include <cstdint>
 #include <vector>
@@ -12,11 +13,21 @@ struct PreambleDiagnostic {
     std::size_t errors;
 };
 
+struct PipelineTimings {
+    double cfo_correction_ms = 0.0;
+    double rrc_filter_ms = 0.0;
+    double synchronization_ms = 0.0;
+    double demodulation_ms = 0.0;
+    double parsing_ms = 0.0;
+    double total_ms = 0.0;
+};
+
 struct RxStats {
     std::size_t preambles_detected = 0;
     std::size_t packets_decoded = 0;
     std::size_t parse_failures = 0;
     std::size_t invalid_offsets = 0;
+    PipelineTimings timings;
 };
 
 class RxPipeline {

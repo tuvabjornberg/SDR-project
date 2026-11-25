@@ -1,6 +1,6 @@
 #include "pipeline/rx_pipeline.h"
 
-#include "common/config.h"
+// #include "common/config.h"
 #include "mac/packet.h"
 #include "mac/preamble.h"
 #include "phy/filter.h"
@@ -43,6 +43,7 @@ std::vector<uint8_t> RxPipeline::packet_to_msg(std::vector<PacketStruct> receive
 
 std::vector<PacketStruct>
 RxPipeline::decode_packets(std::vector<std::vector<std::complex<float>>>& captured_samples) {
+    auto start = std::chrono::steady_clock::now();
     Synchronizer synchronizer(captured_samples.size());
 
     // Coarse CFO correction. Both RX channels share one LO, so the same value applies to both.
@@ -56,19 +57,33 @@ RxPipeline::decode_packets(std::vector<std::vector<std::complex<float>>>& captur
     for (std::size_t ch = 0; ch < captured_samples.size(); ++ch) {
         const auto& in = captured_samples[ch];
 
+        auto t0 = std::chrono::steady_clock::now();
+
         std::vector<std::complex<float>> corrected(in.size());
         for (std::size_t n = 0; n < in.size(); ++n) {
             const double ph = w * static_cast<double>(n);
             corrected[n] = in[n] * std::complex<float>(std::cos(ph), std::sin(ph));
         }
 
+        auto t1 = std::chrono::steady_clock::now();
+
         RRCFilter rx_filter;
         filtered[ch] = rx_filter.filter(
             corrected, rx_filter.root_raised_cosine(GAIN, SAMPLE_FREQ, SYMBOL_RATE, ROLL_OFF_FACTOR,
                                                     FILTER_SPAN * SAMPLES_PER_SYMBOL + 1));
+
+        auto t2 = std::chrono::steady_clock::now();
+
+        m_stats.timings.cfo_correction_ms +=
+            std::chrono::duration<double, std::milli>(t1 - t0).count();
+        m_stats.timings.rrc_filter_ms += std::chrono::duration<double, std::milli>(t2 - t1).count();
     }
 
+    auto t3 = std::chrono::steady_clock::now();
     const auto detections = synchronizer.process(filtered);
+    auto t4 = std::chrono::steady_clock::now();
+    m_stats.timings.synchronization_ms = std::chrono::duration<double, std::milli>(t4 - t3).count();
+
     if (detections.empty()) {
         std::cerr << "[RX] FAIL: No preamble detected\n";
     }
@@ -82,6 +97,8 @@ RxPipeline::decode_packets(std::vector<std::vector<std::complex<float>>>& captur
                   return a.header.sequence < b.header.sequence;
               });
 
+    auto end = std::chrono::steady_clock::now();
+    m_stats.timings.total_ms = std::chrono::duration<double, std::milli>(end - start).count();
     return received_packets;
 }
 
@@ -128,15 +145,20 @@ RxPipeline::demod_parse(std::vector<std::vector<std::complex<float>>>& filtered,
             std::complex<double> sum{};
             for (std::size_t ch = 0; ch < filtered.size(); ++ch) {
                 sum += std::conj(detection.g[ch]) *
-                       std::complex<double>(filtered[ch][detection.offset + n]);
+                       std::complex<float>(filtered[ch][detection.offset + n]);
             }
             const double ph = 2.0 * M_PI * detection.cfo_hz * static_cast<double>(n) / SAMPLE_FREQ;
             combined[n] = std::complex<float>(sum * std::polar(1.0, -ph) / gain_norm);
         }
 
+        auto t0 = std::chrono::steady_clock::now();
         auto bits = demodulator.bpsk_demodulate(combined, SAMPLES_PER_SYMBOL, 0);
 
+        auto t1 = std::chrono::steady_clock::now();
+
         const auto parsed_packet = builder.parse(bits);
+        auto t2 = std::chrono::steady_clock::now();
+
         if (parsed_packet->valid) {
             m_stats.packets_decoded++;
         } else {
@@ -144,6 +166,10 @@ RxPipeline::demod_parse(std::vector<std::vector<std::complex<float>>>& filtered,
             m_rejected.push_back(*parsed_packet);
             continue;
         }
+
+        m_stats.timings.demodulation_ms +=
+            std::chrono::duration<double, std::milli>(t1 - t0).count();
+        m_stats.timings.parsing_ms += std::chrono::duration<double, std::milli>(t2 - t1).count();
 
         received_packets.push_back(*parsed_packet);
     }

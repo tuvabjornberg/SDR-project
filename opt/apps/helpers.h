@@ -1,5 +1,5 @@
 #pragma once
-#include "common/config.h"
+// #include "common/config.h"
 #include "common/settings.h"
 #include "mac/packet.h"
 #include "pipeline/rx_pipeline.h"
@@ -82,6 +82,7 @@ struct RunInfo {
     std::size_t detected = 0;
     std::size_t parse_failures = 0;
     std::size_t invalid_seq = 0; // decoded candidates whose sequence number was out of range
+    PipelineTimings timings;
 };
 
 struct RunSummary {
@@ -180,13 +181,17 @@ inline RunSummary write_results(const std::string& out_dir, const RunInfo& info,
                              key_cols + ",tx_gain,rx_gain,sample_rate,symbol_rate,payload_bytes,"
                                         "num_packets,detected,present,decoded_valid,exact,lost,"
                                         "parse_failures,invalid_seq,pdr_valid,pdr_exact,"
-                                        "bits_compared,bit_errors,ber");
+                                        "bits_compared,bit_errors,ber,"
+                                        "cfo_correction_ms,rrc_filter_ms,synchronization_ms,"
+                                        "demodulation_ms,parsing_ms,total_ms");
         f << key << ',' << TX_GAIN << ',' << RX_GAIN << ',' << info.sample_rate << ','
           << info.symbol_rate << ',' << info.payload_bytes << ',' << info.num_packets << ','
           << info.detected << ',' << s.present << ',' << s.decoded_valid << ',' << s.exact << ','
           << s.lost << ',' << info.parse_failures << ',' << info.invalid_seq << ',' << s.pdr_valid
           << ',' << s.pdr_exact << ',' << s.bits_compared << ',' << s.bit_errors << ',' << s.ber
-          << '\n';
+          << ',' << info.timings.cfo_correction_ms << ',' << info.timings.rrc_filter_ms << ','
+          << info.timings.synchronization_ms << ',' << info.timings.demodulation_ms << ','
+          << info.timings.parsing_ms << ',' << info.timings.total_ms << '\n';
     }
 
     {
@@ -282,14 +287,8 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
     RxPipeline rx_pipeline;
 
     std::cout << "Decoding packets started" << std::endl;
-    const auto r0 = std::chrono::steady_clock::now();
-
     auto received_packets = rx_pipeline.decode_packets(in);
     auto rejected_packets = rx_pipeline.rejected();
-
-    const auto r1 = std::chrono::steady_clock::now();
-    std::cout << "RX decoding took " << std::chrono::duration<double>(r1 - r0).count() << " s\n";
-
     std::cout << "Finished decoding, starting comparison" << std::endl;
 
     auto all_packets = received_packets;
@@ -345,6 +344,12 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
     info.detected = rx_stats.preambles_detected;
     info.parse_failures = rx_stats.parse_failures;
     info.invalid_seq = invalid_seq;
+    info.timings.cfo_correction_ms = rx_stats.timings.cfo_correction_ms;
+    info.timings.rrc_filter_ms = rx_stats.timings.rrc_filter_ms;
+    info.timings.synchronization_ms = rx_stats.timings.synchronization_ms;
+    info.timings.demodulation_ms = rx_stats.timings.demodulation_ms;
+    info.timings.parsing_ms = rx_stats.timings.parsing_ms;
+    info.timings.total_ms = rx_stats.timings.total_ms;
 
     const RunSummary s = write_results(config.out_dir, info, per_seq);
 
@@ -370,11 +375,19 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
         std::cout << "\nBits compared: " << s.bits_compared << std::endl;
         std::cout << "Bit errors:    " << s.bit_errors << std::endl;
         std::cout << "BER:           " << s.ber * 100.0 << " %" << std::endl;
-    }
 
-    const auto r2 = std::chrono::steady_clock::now();
-    std::cout << "RX comparison and write ti csv took "
-              << std::chrono::duration<double>(r2 - r1).count() << " s\n";
+        std::cout << "\nTime for CFO correction:   " << info.timings.cfo_correction_ms << " ms"
+                  << std::endl;
+        std::cout << "Time for filter:             " << info.timings.rrc_filter_ms << " ms"
+                  << std::endl;
+        std::cout << "Time for synchronization:    " << info.timings.synchronization_ms << " ms"
+                  << std::endl;
+        std::cout << "Time for demodulation:       " << info.timings.demodulation_ms << " ms"
+                  << std::endl;
+        std::cout << "Time for parsing:            " << info.timings.parsing_ms << " ms"
+                  << std::endl;
+        std::cout << "Total time for decoding:     " << info.timings.total_ms << " ms" << std::endl;
+    }
 };
 
 enum class Node { TX, RX, TXRX };
