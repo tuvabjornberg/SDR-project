@@ -1,0 +1,4 @@
+run,label,mode,variant,tx_gain,rx_gain,sample_rate,symbol_rate,payload_bytes,num_packets,detected,present,decoded_valid,exact,lost,parse_failures,invalid_seq,pdr_valid,pdr_exact,bits_compared,bit_errors,ber
+1795212846,50cm,mimo,RX0+RX1 (MRC),60,40,2e+06,250000,32,1000,1000,1000,1000,1000,0,0,0,1,1,352000,0,0
+1795213264,100cm,mimo,RX0+RX1 (MRC),60,40,2e+06,250000,32,1000,1000,1000,999,999,0,1,0,0.999,0.999,352000,12,3.40909e-05
+1795213876,150cm,mimo,RX0+RX1 (MRC),60,40,2e+06,250000,32,1000,999,999,998,998,1,1,0,0.998,0.998,351648,1,2.84375e-06
