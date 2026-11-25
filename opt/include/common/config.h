@@ -49,7 +49,7 @@ static const std::string RX_ANT = "RX2";
 static const std::string RX_REF = "internal";
 static constexpr double RX_RATE = SAMPLE_FREQ;
 static const uhd::tune_request_t RX_FREQ = 2450e6;
-static constexpr double RX_GAIN = 40;
+static constexpr double RX_GAIN = 50;
 static constexpr double RX_BANDWIDTH = 1.5e6;
 
 static constexpr std::size_t NUM_RX_CHANNELS = 2;
