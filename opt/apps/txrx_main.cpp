@@ -37,7 +37,6 @@ static void add_awgn(std::vector<std::complex<float>>& samples, double snr_db,
         samples[k] += std::complex<float>{n(noise_rng), n(noise_rng)};
 }
 
-
 SdrDevices initialize_sdrs(const TestConfig& options, std::size_t num_tx_channels,
                            std::size_t num_rx_channels) {
     SdrDevices devices;

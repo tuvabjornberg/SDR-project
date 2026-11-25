@@ -132,20 +132,8 @@ target_link_libraries(pipeline
 )
 
 if(BUILD_APPS)
-
-    add_executable(main
-        tests/main.cpp
-    )
-
-    target_link_libraries(main
-        PRIVATE
-            radio
-            pipeline
-            project_warnings
-    )
-
     add_executable(transmitter
-        apps/transmitter.cpp
+        apps/transmitter_main.cpp
     )
 
     target_link_libraries(transmitter
@@ -156,7 +144,7 @@ if(BUILD_APPS)
     )
 
     add_executable(receiver
-        apps/receiver.cpp
+        apps/receiver_main.cpp
     )
 
     target_link_libraries(receiver
@@ -167,7 +155,7 @@ if(BUILD_APPS)
     )
 
     add_executable(txrx
-        apps/txrx.cpp
+        apps/txrx_main.cpp
     )
 
     target_link_libraries(txrx
@@ -184,7 +172,7 @@ if(BUILD_TESTS)
     enable_testing()
 
     add_executable(tone_test
-        tests/mimo_tone_test.cpp
+        tests/tone/mimo_tone_test.cpp
     )
 
     target_link_libraries(tone_test
