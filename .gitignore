@@ -71,3 +71,4 @@ Testing/
 .vscode
 tests/outlog/*
 !tests/outlog/.gitkeep
+tests/recordings/
