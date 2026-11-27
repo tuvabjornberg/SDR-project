@@ -26,6 +26,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD"
 endif()
 
 find_package(UHD 4.9.0 REQUIRED)
+find_package(JPEG REQUIRED)
 
 include(UHDMinDepVersions)
 
@@ -126,6 +127,7 @@ target_link_libraries(pipeline
     PUBLIC
         mac
         phy
+        JPEG::JPEG
 
     PRIVATE
         project_warnings
