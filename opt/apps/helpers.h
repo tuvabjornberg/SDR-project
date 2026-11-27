@@ -17,6 +17,7 @@
 #include <iostream>
 #include <string>
 #include <sys/resource.h>
+#include <unordered_map>
 #include <vector>
 
 struct PacketLog {
@@ -38,11 +39,13 @@ struct TestConfig {
     bool single_sdr = false;
     std::string tx_serial;
     std::string rx_serial;
-    double capture_s;
+    double capture_s = 0.0;
 
     std::string out_dir = "tests/outlog"; // where the CSV files go
     std::string label = "default";        // groups the runs of one experiment
     std::string run_id;                   // set in main()
+    bool record = false;
+    std::string replay_file;
 
     std::size_t LEAD_IN = 2400;
     std::size_t TAIL = 400;
@@ -188,6 +191,99 @@ inline void save_jpeg(const std::vector<uint8_t>& data, const std::string& filen
 
     file.write(reinterpret_cast<const char*>(data.data()), data.size());
     file.close();
+}
+
+inline void save_metadata(const TestConfig& config, const std::string& recording_dir) {
+    std::ofstream file(recording_dir + "/metadata.csv");
+
+    if (!file)
+        throw std::runtime_error("Could not create metadata.csv");
+
+    file << "key,value\n";
+
+    file << "label," << config.label << '\n';
+    file << "run_id," << config.run_id << '\n';
+    file << "mode," << config.mode << '\n';
+
+    file << "tx_channels," << config.tx_channels << '\n';
+    file << "rx_channels," << config.rx_channels << '\n';
+    file << "single_sdr," << config.single_sdr << '\n';
+
+    file << "tx_serial," << config.tx_serial << '\n';
+    file << "rx_serial," << config.rx_serial << '\n';
+
+    file << "num_packets," << config.num_packets << '\n';
+    file << "payload_size," << config.payload_size << '\n';
+    file << "packet_interval_ms," << config.packet_interval_ms << '\n';
+
+    file << "sample_rate," << SAMPLE_FREQ << '\n';
+    file << "symbol_rate," << SYMBOL_RATE << '\n';
+
+    file << "tx_gain," << TX_GAIN << '\n';
+    file << "rx_gain," << RX_GAIN << '\n';
+
+    file << "capture_s," << config.capture_s << '\n';
+    file << "lead_in," << config.LEAD_IN << '\n';
+    file << "tail," << config.TAIL << '\n';
+
+    if (!file)
+        throw std::runtime_error("Error writing metadata.csv");
+}
+
+inline TestConfig load_metadata(const std::string& recording_dir) {
+    std::ifstream file(recording_dir + "/metadata.csv");
+
+    if (!file)
+        throw std::runtime_error("Could not open metadata.csv");
+
+    std::unordered_map<std::string, std::string> values;
+
+    std::string line;
+    std::getline(file, line); // Skip CSV header
+
+    while (std::getline(file, line)) {
+        const auto separator = line.find(',');
+
+        if (separator == std::string::npos)
+            continue;
+
+        std::string key = line.substr(0, separator);
+        std::string value = line.substr(separator + 1);
+
+        values[key] = value;
+    }
+
+    auto get = [&](const std::string& key) -> std::string {
+        auto it = values.find(key);
+
+        if (it == values.end())
+            throw std::runtime_error("Missing metadata field: " + key);
+
+        return it->second;
+    };
+
+    TestConfig config;
+
+    config.label = get("label");
+    config.run_id = get("run_id");
+    config.mode = get("mode");
+
+    config.tx_channels = std::stoull(get("tx_channels"));
+    config.rx_channels = std::stoull(get("rx_channels"));
+    config.single_sdr = std::stoi(get("single_sdr")) != 0;
+
+    config.tx_serial = get("tx_serial");
+    config.rx_serial = get("rx_serial");
+
+    config.num_packets = std::stoull(get("num_packets"));
+    config.payload_size = std::stoull(get("payload_size"));
+    config.packet_interval_ms = std::stoi(get("packet_interval_ms"));
+
+    // config.capture_s = std::stod(get("capture_s"));
+    config.LEAD_IN = std::stoull(get("lead_in"));
+    config.TAIL = std::stoull(get("tail"));
+
+    return config;
 }
 
 // ----------------------- Write to csv ------------------------
@@ -421,7 +517,8 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
     info.timings.parsing_ms = rx_stats.timings.parsing_ms;
     info.timings.total_ms = rx_stats.timings.total_ms;
 
-    const RunSummary s = write_results(config.out_dir, info, per_seq);
+    std::string output_dir = config.record ? "tests/recordings/" + config.label : config.out_dir;
+    const RunSummary s = write_results(output_dir, info, per_seq);
 
     if (config.mode == "siso" || (use0 && use1)) { // SISO or MRC
         std::cout << "\n========================================\n";
@@ -463,9 +560,9 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
             auto rec = reconstruct_file(received_packets, transmitted_payloads);
 
             std::string filename = std::filesystem::path(config.input_file).stem().string();
-            std::string output_path = config.out_dir + "/" + filename + "_reconstructed";
+            std::string output_path = output_dir + "/" + filename + "_reconstructed";
 
-            save_jpeg(rec.data, output_path, config.out_dir); // raw, zero-filled (for comparison)
+            save_jpeg(rec.data, output_path, output_dir); // raw, zero-filled (for comparison)
 
             const std::size_t lost_bytes = std::count(rec.lost.begin(), rec.lost.end(), uint8_t{1});
             std::cout << "Lost bytes: " << lost_bytes << " / " << rec.data.size() << "\n";
@@ -493,19 +590,25 @@ inline void print_options(Node node) {
     switch (node) {
     case Node::TX:
         std::cout << "Usage: ./transmitter --tx-serial <TX_SERIAL> "
-                     "--tx-channels <number> --packets <number>\n";
+                     "--tx-channels <number> --input <number/filepath>\n";
         break;
 
     case Node::RX:
         std::cout
             << "Usage: ./receiver --rx-serial <RX_SERIAL> "
-               "--rx-channels <number> --tx_channels <1 or 2> --label <text> --packets <number>\n";
+               "--rx-channels <number> --tx_channels <1 or 2> --label <text> --input <number>\n";
         break;
 
     case Node::TXRX:
-        std::cout << "Usage: ./txrx --tx-serial <TX_SERIAL> --tx_channels <1 or 2>"
+        std::cout << "Usage normal run: ./txrx --tx-serial <TX_SERIAL> --tx_channels <1 or 2>"
                      "--rx-serial <RX_SERIAL> --rx_channels <1 or 2> --label <text> "
-                     "--packets <number>\n";
+                     "--input <number/filepath>"
+                  << std::endl;
+        std::cout << "Usage recording run: ./txrx --tx-serial <TX_SERIAL> --tx_channels <1 or 2>"
+                     "--rx-serial <RX_SERIAL> --rx_channels <1 or 2> --label <text> "
+                     "--input <number/filepath> --record"
+                  << std::endl;
+        std::cout << "Usage replay run: ./txrx --replay <filepath> " << std::endl;
         break;
     }
 
@@ -536,6 +639,10 @@ inline void print_options(Node node) {
     case Node::TXRX:
         print_option("--loopback", "Run a loopback test without SDR hardware");
         print_option("--loopback-noise", "Run loopback test with added noise");
+        print_option("--replay <filepath>",
+                     "Run a replay test of recorded IQ-samples, without SDR hardware");
+        print_option("--record", "Record raw IQ-samples");
+        print_option("--payload-size", "Payload size of each packet (default: 32 bytes)");
         print_option("--tx-serial <SERIAL>", "Specify the serial number of the TX SDR");
         print_option("--rx-serial <SERIAL>", "Specify the serial number of the RX SDR");
         print_option(
@@ -543,11 +650,11 @@ inline void print_options(Node node) {
             "Number of TX channels, 1 channel = TX/RX A and 2 channels = TX/RX A & TX/RX B");
         print_option("--rx-channels <number>",
                      "Number of RX channels, 1 channel = RX2 A and 2 channels = RX2 A & RX2 B");
-        print_option("--out <dir>", "CSV output directory (default: tests/outlog)");
         print_option("--label <text>", "Experiment name stored in every CSV row");
         print_option("--input <filepath or number of packets>",
                      "The input file to transmit or the number of packets sent from the synthetic "
                      "counter data)");
+        print_option("--output <filepath>", "CSV output directory (default: tests/outlog)");
         break;
     }
 
@@ -568,12 +675,12 @@ inline bool parse_arguments(int argc, char** argv, TestConfig& options, Node nod
             options.mode = "loopback";
         } else if (arg == "--loopback-noise") {
             options.mode = "loopback-noise";
-        } else if (arg == "--siso") {
-            options.mode = "siso";
-        } else if (arg == "--simo") {
-            options.mode = "simo";
-        } else if (arg == "--mimo") {
-            options.mode = "mimo";
+        } else if (arg == "--replay" && i + 1 < argc) {
+            options.replay_file = argv[++i];
+        } else if (arg == "--record") {
+            options.record = true;
+        } else if (arg == "--payload-size" && i + 1 < argc) {
+            options.payload_size = static_cast<size_t>(std::stoull(argv[++i]));
         } else if (arg == "--tx-serial" && i + 1 < argc) {
             options.tx_serial = argv[++i];
         } else if (arg == "--tx-channels" && i + 1 < argc) {
@@ -615,7 +722,8 @@ inline bool parse_arguments(int argc, char** argv, TestConfig& options, Node nod
         }
     }
 
-    if (options.mode != "loopback" && options.mode != "loopback-noise") {
+    if (options.mode != "loopback" && options.mode != "loopback-noise" &&
+        options.replay_file.empty()) {
         if (options.tx_serial == options.rx_serial) {
             options.single_sdr = true;
         } else {

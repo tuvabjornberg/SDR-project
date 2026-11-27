@@ -4,6 +4,7 @@
 #include "mac/preamble.h"
 // #include "pipeline/rx_pipeline.h"
 #include "helpers.h"
+#include "iq_recording.h"
 #include "pipeline/tx_pipeline.h"
 #include "radio/receiver.h"
 #include "radio/transmitter.h"
@@ -58,21 +59,6 @@ SdrDevices initialize_sdrs(const TestConfig& options, std::size_t num_tx_channel
 
     return devices;
 }
-
-//  struct rusage cpu_end{};
-//     getrusage(RUSAGE_SELF, &cpu_end);
-
-//     double cpu_user_time = (cpu_end.ru_utime.tv_sec - cpu_start.ru_utime.tv_sec) +
-//                            1e-6 * (cpu_end.ru_utime.tv_usec - cpu_start.ru_utime.tv_usec);
-
-//     double cpu_system_time = (cpu_end.ru_stime.tv_sec - cpu_start.ru_stime.tv_sec) +
-//                              1e-6 * (cpu_end.ru_stime.tv_usec - cpu_start.ru_stime.tv_usec);
-
-//     std::cout << "CPU user time:   " << cpu_user_time << " s" << std::endl;
-//     std::cout << "CPU system time: " << cpu_system_time << " s" << std::endl;
-//     std::cout << "CPU total time:  " << cpu_user_time + cpu_system_time << " s" << std::endl;
-//     std::cout << "CPU time/packet: " << (cpu_user_time + cpu_system_time) / config.num_packets
-//               << " s" << std::endl;
 
 int run_loopback_test(const TestConfig& config, bool use_noise) {
     constexpr std::size_t LEAD_IN = 2400;
@@ -147,6 +133,44 @@ int run_loopback_test(const TestConfig& config, bool use_noise) {
     return 0;
 }
 
+int run_replay_test(const std::string& recording_dir) {
+    TestConfig replay_config = load_metadata(recording_dir);
+
+    std::cout << "\n========== REPLAYING RECORDING ==========\n";
+    std::cout << "Label:        " << replay_config.label << '\n';
+    std::cout << "Mode:         " << replay_config.mode << '\n';
+    std::cout << "Packets:      " << replay_config.num_packets << '\n';
+    std::cout << "Payload size: " << replay_config.payload_size << '\n';
+
+    std::vector<std::vector<std::complex<float>>> captured_samples;
+    for (std::size_t ch = 0; ch < replay_config.rx_channels; ++ch) {
+        std::string filename = recording_dir + "/rx" + std::to_string(ch) + ".iq";
+
+        captured_samples.push_back(iq_recording::load_channel(filename));
+    }
+
+    auto transmitted_payloads =
+        iq_recording::load_transmitted_payloads(recording_dir + "/payloads.bin");
+
+    replay_config.num_packets = transmitted_payloads.size();
+
+    if (replay_config.mode == "siso") {
+        evaluate("RX0 only", true, false, replay_config, transmitted_payloads, captured_samples);
+    } else if (replay_config.mode == "simo") {
+        evaluate("RX0 only", true, false, replay_config, transmitted_payloads, captured_samples);
+        evaluate("RX1 only", false, true, replay_config, transmitted_payloads, captured_samples);
+        evaluate("RX0+RX1 (MRC)", true, true, replay_config, transmitted_payloads,
+                 captured_samples);
+    } else if (replay_config.mode == "mimo") {
+        // evaluate("RX0 only", true, false, replay_config, transmitted_payloads, captured_samples);
+        // evaluate("RX1 only", false, true, replay_config, transmitted_payloads, captured_samples);
+        evaluate("RX0+RX1 (MRC)", true, true, replay_config, transmitted_payloads,
+                 captured_samples);
+    }
+
+    return 0;
+}
+
 int main(int argc, char** argv) {
     TestConfig config;
     if (!parse_arguments(argc, argv, config, Node::TXRX)) {
@@ -177,16 +201,17 @@ int main(int argc, char** argv) {
     if (config.mode == "loopback") {
         return run_loopback_test(config, false);
     }
-
     if (config.mode == "loopback-noise") {
         return run_loopback_test(config, true);
+    }
+    if (!config.replay_file.empty()) {
+        return run_replay_test(config.replay_file);
     }
 
     SdrDevices sdr_devices = initialize_sdrs(config, config.tx_channels, config.rx_channels);
     std::unique_ptr<Transmitter> tx = std::move(sdr_devices.tx);
     std::unique_ptr<Receiver> rx = std::move(sdr_devices.rx);
 
-    // Artificial payload
     TxPipeline tx_pipeline;
     std::vector<std::vector<uint8_t>> transmitted_payloads;
     if (config.input_file.empty()) {
@@ -203,12 +228,12 @@ int main(int argc, char** argv) {
     }
 
     // RX
-    const double capture_s = capture_time(config);
-    const auto capture_duration = std::chrono::duration<double>(capture_s);
+    config.capture_s = capture_time(config);
+    const auto capture_duration = std::chrono::duration<double>(config.capture_s);
 
     std::vector<std::vector<std::complex<float>>> captured_samples(config.rx_channels);
     for (auto& channel : captured_samples) {
-        channel.reserve(static_cast<std::size_t>(capture_s * SAMPLE_FREQ * 1.2));
+        channel.reserve(static_cast<std::size_t>(config.capture_s * SAMPLE_FREQ * 1.2));
     }
 
     rx->start();
@@ -274,6 +299,28 @@ int main(int argc, char** argv) {
     rx->stop();
     rx_thread.join();
     std::cout << "[OK] RX capture complete" << std::endl;
+
+    if (config.record) { // Recording
+        std::string recording_dir = "tests/recordings/" + config.label;
+        std::filesystem::create_directories(recording_dir);
+
+        // RX samples
+        for (std::size_t ch = 0; ch < captured_samples.size(); ++ch) {
+            std::string filename = recording_dir + "/rx" + std::to_string(ch) + ".iq";
+            iq_recording::save_channel(captured_samples[ch], filename);
+            std::cout << "Saved RX channel " << ch << ": " << captured_samples[ch].size()
+                      << " samples\n";
+        }
+
+        // Payload
+        std::string payload_filename = recording_dir + "/payloads.bin";
+        iq_recording::save_payloads(transmitted_payloads, payload_filename);
+
+        // Config
+        save_metadata(config, recording_dir);
+
+        std::cout << "[OK] Recording saved to: " << recording_dir << std::endl;
+    }
 
     if (config.mode == "siso") {
         evaluate("RX0 only", true, false, config, transmitted_payloads, captured_samples);
