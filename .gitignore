@@ -72,3 +72,7 @@ Testing/
 tests/outlog/*
 !tests/outlog/.gitkeep
 tests/recordings/
+opt/tests/outlog/
+!opt/tests/outlog/.gitkeep
+opt/tests/recordings/
+opt/tests/results/
