@@ -1,0 +1,2 @@
+run,label,mode,variant,tx_gain,rx_gain,sample_rate,symbol_rate,payload_bytes,num_packets,detected,present,decoded_valid,exact,lost,parse_failures,invalid_seq,pdr_valid,pdr_exact,bits_compared,bit_errors,ber,cfo_correction_ms,rrc_filter_ms,synchronization_ms,demodulation_ms,parsing_ms,total_ms
+1795781726,100cm_image_low,mimo,RX0+RX1 (MRC),60,50,2e+06,250000,32,82,82,82,82,82,0,0,0,1,1,28832,0,0,807.114,20021.3,9014.52,20.8193,0.545607,30562.5

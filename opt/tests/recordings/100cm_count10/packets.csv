@@ -1,0 +1,11 @@
+run,label,mode,variant,sequence,status,valid,bit_errors,preamble_errors,seq_errors,length_errors,payload_errors,checksum_errors,packet_bits,rx_payload_bytes
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),0,ok,1,0,0,0,0,0,0,352,32
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),1,ok,1,0,0,0,0,0,0,352,32
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),2,ok,1,0,0,0,0,0,0,352,32
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),3,ok,1,0,0,0,0,0,0,352,32
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),4,ok,1,0,0,0,0,0,0,352,32
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),5,ok,1,0,0,0,0,0,0,352,32
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),6,ok,1,0,0,0,0,0,0,352,32
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),7,ok,1,0,0,0,0,0,0,352,32
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),8,ok,1,0,0,0,0,0,0,352,32
+1795781537,100cm_count10,mimo,RX0+RX1 (MRC),9,ok,1,0,0,0,0,0,0,352,32

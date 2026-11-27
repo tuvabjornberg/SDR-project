@@ -1,0 +1,2 @@
+run,label,mode,variant,tx_gain,rx_gain,sample_rate,symbol_rate,payload_bytes,num_packets,detected,present,decoded_valid,exact,lost,parse_failures,invalid_seq,pdr_valid,pdr_exact,bits_compared,bit_errors,ber,cfo_correction_ms,rrc_filter_ms,synchronization_ms,demodulation_ms,parsing_ms,total_ms
+1795782119,100cm_imagelowsiso,siso,RX0 only,60,50,2e+06,250000,32,82,81,81,81,81,1,0,0,0.987805,0.987805,28480,0,0,408.139,10174.7,4900.89,20.6193,0.532811,15978.4
