@@ -187,10 +187,19 @@ int main(int argc, char** argv) {
     std::unique_ptr<Receiver> rx = std::move(sdr_devices.rx);
 
     // Artificial payload
+    TxPipeline tx_pipeline;
     std::vector<std::vector<uint8_t>> transmitted_payloads;
-    transmitted_payloads.reserve(config.num_packets);
-    for (std::size_t i = 0; i < config.num_packets; ++i) {
-        transmitted_payloads.push_back(make_test_payload(i, config.payload_size));
+    if (config.input_file.empty()) {
+        // Artificial payload
+        transmitted_payloads.reserve(config.num_packets);
+        for (std::size_t i = 0; i < config.num_packets; ++i) {
+            transmitted_payloads.push_back(make_test_payload(i, config.payload_size));
+        }
+    } else {
+        transmitted_payloads = tx_pipeline.file_reader(config.input_file, config.payload_size);
+        std::cout << "Number of packets generated from " << config.input_file << ": "
+                  << transmitted_payloads.size() << std::endl;
+        config.num_packets = transmitted_payloads.size();
     }
 
     // RX
@@ -220,12 +229,11 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(std::chrono::milliseconds(200)); // after rx.start(), before TX
 
     // TX
-    TxPipeline tx_pipeline;
     size_t num_sent;
 
     const auto t0 = std::chrono::steady_clock::now();
 
-    for (std::size_t i = 0; i < config.num_packets; ++i) {
+    for (std::size_t i = 0; i < transmitted_payloads.size(); ++i) {
         auto samples = tx_pipeline.generate_samples(transmitted_payloads[i]);
 
         if (samples.empty()) {
@@ -274,8 +282,8 @@ int main(int argc, char** argv) {
         evaluate("RX1 only", false, true, config, transmitted_payloads, captured_samples);
         evaluate("RX0+RX1 (MRC)", true, true, config, transmitted_payloads, captured_samples);
     } else if (config.mode == "mimo") {
-        evaluate("RX0 only", true, false, config, transmitted_payloads, captured_samples);
-        evaluate("RX1 only", false, true, config, transmitted_payloads, captured_samples);
+        // evaluate("RX0 only", true, false, config, transmitted_payloads, captured_samples);
+        // evaluate("RX1 only", false, true, config, transmitted_payloads, captured_samples);
         evaluate("RX0+RX1 (MRC)", true, true, config, transmitted_payloads, captured_samples);
     } else if (config.mode == "loopback" || config.mode == "loopback-noise") {
         evaluate(config.mode.data(), true, true, config, transmitted_payloads, captured_samples);

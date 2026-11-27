@@ -1,5 +1,6 @@
 #pragma once
 // #include "common/config.h"
+#include "common/jpeg.h"
 #include "common/settings.h"
 #include "mac/packet.h"
 #include "pipeline/rx_pipeline.h"
@@ -27,7 +28,7 @@ struct PacketLog {
 };
 
 struct TestConfig {
-    std::size_t num_packets = 100;
+    std::size_t num_packets = 0;
     std::size_t payload_size = 32;
     int packet_interval_ms = 10;
 
@@ -45,6 +46,8 @@ struct TestConfig {
 
     std::size_t LEAD_IN = 2400;
     std::size_t TAIL = 400;
+
+    std::string input_file = "";
 };
 
 struct SdrDevices {
@@ -118,6 +121,73 @@ inline std::size_t bit_cnt(uint32_t value) {
     }
 
     return count;
+}
+
+inline std::vector<uint8_t>
+reconstruct_bytes(const std::vector<std::vector<std::complex<float>>>& captured_samples) {
+    std::vector<uint8_t> data;
+
+    for (const auto& packet : captured_samples) {
+        for (const auto& sample : packet) {
+            uint8_t byte_I = static_cast<uint8_t>(std::round(sample.real()));
+            uint8_t byte_Q = static_cast<uint8_t>(std::round(sample.imag()));
+
+            data.push_back(byte_I);
+            data.push_back(byte_Q);
+        }
+    }
+
+    return data;
+}
+
+struct Reconstruction {
+    std::vector<uint8_t> data;
+    std::vector<uint8_t> lost; // 1 = byte never received
+};
+
+inline Reconstruction
+reconstruct_file(const std::vector<PacketStruct>& received_packets,
+                 const std::vector<std::vector<uint8_t>>& transmitted_payloads) {
+    std::vector<std::size_t> start(transmitted_payloads.size() + 1, 0);
+    for (std::size_t i = 0; i < transmitted_payloads.size(); ++i)
+        start[i + 1] = start[i] + transmitted_payloads[i].size();
+
+    Reconstruction r;
+    r.data.assign(start.back(), 0x00);
+    r.lost.assign(start.back(), 1);
+
+    for (const auto& packet : received_packets) {
+        if (!packet.valid)
+            continue;
+        const std::size_t seq = packet.header.sequence;
+        if (seq >= transmitted_payloads.size())
+            continue;
+
+        const std::size_t n = std::min(packet.payload.size(), transmitted_payloads[seq].size());
+        std::copy_n(packet.payload.begin(), n, r.data.begin() + start[seq]);
+        std::fill_n(r.lost.begin() + start[seq], n, uint8_t{0});
+    }
+    return r;
+}
+
+inline std::vector<uint8_t> flatten(const std::vector<std::vector<uint8_t>>& p) {
+    std::vector<uint8_t> out;
+    for (const auto& v : p)
+        out.insert(out.end(), v.begin(), v.end());
+    return out;
+}
+
+inline void save_jpeg(const std::vector<uint8_t>& data, const std::string& filename,
+                      const std::string& out_dir) {
+    std::filesystem::create_directories(out_dir);
+    std::ofstream file(filename + ".jpg", std::ios::binary);
+
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not create output file");
+    }
+
+    file.write(reinterpret_cast<const char*>(data.data()), data.size());
+    file.close();
 }
 
 // ----------------------- Write to csv ------------------------
@@ -353,7 +423,7 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
 
     const RunSummary s = write_results(config.out_dir, info, per_seq);
 
-    if (config.mode == "siso" || (use0 && use1)) {
+    if (config.mode == "siso" || (use0 && use1)) { // SISO or MRC
         std::cout << "\n========================================\n";
         std::cout << "TEST RESULTS\n";
         std::cout << "========================================\n";
@@ -387,6 +457,29 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
         std::cout << "Time for parsing:            " << info.timings.parsing_ms << " ms"
                   << std::endl;
         std::cout << "Total time for decoding:     " << info.timings.total_ms << " ms" << std::endl;
+
+        std::string extension = std::filesystem::path(config.input_file).extension().string();
+        if (extension == ".jpg" || extension == ".jpeg") {
+            auto rec = reconstruct_file(received_packets, transmitted_payloads);
+
+            std::string filename = std::filesystem::path(config.input_file).stem().string();
+            std::string output_path = config.out_dir + "/" + filename + "_reconstructed";
+
+            save_jpeg(rec.data, output_path, config.out_dir); // raw, zero-filled (for comparison)
+
+            const std::size_t lost_bytes = std::count(rec.lost.begin(), rec.lost.end(), uint8_t{1});
+            std::cout << "Lost bytes: " << lost_bytes << " / " << rec.data.size() << "\n";
+
+            try {
+                auto damaged =
+                    jpegres::find_damaged_intervals(flatten(transmitted_payloads), rec.lost);
+                auto img = jpegres::decode_and_mark(rec.data, damaged);
+                save_ppm(img, output_path + "_marked.ppm");
+                std::cout << "Marked image saved to: " << output_path << "_marked.png\n";
+            } catch (const std::exception& e) {
+                std::cerr << "Could not decode image (header packets lost?): " << e.what() << "\n";
+            }
+        }
     }
 };
 
@@ -424,7 +517,9 @@ inline void print_options(Node node) {
         print_option(
             "--tx-channels <number>",
             "Number of TX channels, 1 channel = TX/RX A and 2 channels = TX/RX A & TX/RX B");
-        print_option("--packets <number>", "Number of packets (default: 100)");
+        print_option("--input <filepath or number of packets>",
+                     "The input file to transmit or the number of packets sent from the synthetic "
+                     "counter data)");
         break;
 
     case Node::RX:
@@ -434,7 +529,8 @@ inline void print_options(Node node) {
         print_option("--tx-channels <number>",
                      "Number of TX channels (only for logging siso, simo, mimo)");
         print_option("--label <text>", "Experiment name stored in every CSV row");
-        print_option("--packets <number>", "Number of packets (default: 100)");
+        // print_option("--packets <number>", "Number of packets for synthetic input"); //TODO: RX
+        // needs packets to know how long it should listen for
         break;
 
     case Node::TXRX:
@@ -449,7 +545,9 @@ inline void print_options(Node node) {
                      "Number of RX channels, 1 channel = RX2 A and 2 channels = RX2 A & RX2 B");
         print_option("--out <dir>", "CSV output directory (default: tests/outlog)");
         print_option("--label <text>", "Experiment name stored in every CSV row");
-        print_option("--packets <number>", "Number of packets (default: 100)");
+        print_option("--input <filepath or number of packets>",
+                     "The input file to transmit or the number of packets sent from the synthetic "
+                     "counter data)");
         break;
     }
 
@@ -484,12 +582,32 @@ inline bool parse_arguments(int argc, char** argv, TestConfig& options, Node nod
             options.rx_serial = argv[++i];
         } else if (arg == "--rx-channels" && i + 1 < argc) {
             options.rx_channels = static_cast<size_t>(std::stoull(argv[++i]));
-        } else if (arg == "--out" && i + 1 < argc) {
-            options.out_dir = argv[++i];
         } else if (arg == "--label" && i + 1 < argc) {
             options.label = argv[++i];
-        } else if (arg == "--packets" && i + 1 < argc) {
-            options.num_packets = static_cast<size_t>(std::stoull(argv[++i]));
+        } else if (arg == "--input" && i + 1 < argc) {
+            std::string input = argv[++i];
+            bool is_number =
+                !input.empty() && std::all_of(input.begin(), input.end(),
+                                              [](unsigned char c) { return std::isdigit(c); });
+
+            if (is_number) {
+                options.num_packets = std::stoull(input);
+                if (options.num_packets == 0) {
+                    std::cerr << "Number of packets must be greater than zero\n";
+                    return false;
+                }
+
+            } else {
+                options.input_file = input;
+                std::string extension = std::filesystem::path(input).extension().string();
+                if (extension != ".txt" && extension != ".jpeg" && extension != ".jpg") {
+                    std::cerr
+                        << "Unsupported input file format, must be either .txt or .jpg/.jpeg\n";
+                    return false;
+                }
+            }
+        } else if (arg == "--output" && i + 1 < argc) {
+            options.out_dir = argv[++i];
         } else {
             std::cerr << "Unknown or incomplete argument: " << arg << '\n';
             print_options(node);

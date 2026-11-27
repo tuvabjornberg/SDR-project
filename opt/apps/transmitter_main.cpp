@@ -22,14 +22,19 @@ int main(int argc, char** argv) {
     // Initialize TX SDR only
     auto tx = std::make_unique<Transmitter>(config.tx_serial, config.tx_channels);
 
-    // Artificial payload
+    TxPipeline tx_pipeline;
+
     std::vector<std::vector<uint8_t>> transmitted_payloads;
-    transmitted_payloads.reserve(config.num_packets);
-    for (std::size_t i = 0; i < config.num_packets; ++i) {
-        transmitted_payloads.push_back(make_test_payload(i, config.payload_size));
+    if (config.input_file.empty()) {
+        // Artificial payload
+        transmitted_payloads.reserve(config.num_packets);
+        for (std::size_t i = 0; i < config.num_packets; ++i) {
+            transmitted_payloads.push_back(make_test_payload(i, config.payload_size));
+        }
+    } else {
+        transmitted_payloads = tx_pipeline.file_reader(config.input_file, config.payload_size);
     }
 
-    TxPipeline tx_pipeline;
     size_t num_sent;
 
     std::cout << "[TX] SDR initialized. Starting transmission in 3 seconds..." << std::endl;
@@ -38,7 +43,7 @@ int main(int argc, char** argv) {
 
     const auto t0 = std::chrono::steady_clock::now();
 
-    for (std::size_t i = 0; i < config.num_packets; ++i) {
+    for (std::size_t i = 0; i < transmitted_payloads.size(); ++i) {
         auto samples = tx_pipeline.generate_samples(transmitted_payloads[i]);
 
         if (samples.empty()) {

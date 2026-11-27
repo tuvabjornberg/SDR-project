@@ -4,6 +4,7 @@
 #include "common/settings.h"
 #include "phy/filter.h"
 #include "phy/modulator.h"
+#include "common/jpeg.h"
 
 #include <bitset>
 #include <cstdint>
@@ -13,37 +14,30 @@
 #include <sstream>
 #include <string>
 
-std::vector<uint8_t> TxPipeline::file_reader(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <filename.txt>" << std::endl;
-    }
-
-    std::ifstream file(argv[1]);
+std::vector<std::vector<uint8_t>> TxPipeline::file_reader(const std::string& filename,
+                                                          std::size_t payload_size) {
+    std::ifstream file(filename, std::ios::binary);
 
     if (!file.is_open()) {
-        std::cerr << "Error: Could not open file: " << argv[1] << std::endl;
+        throw std::runtime_error("Could not open file: " + filename);
     }
 
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-
-    std::string message = buffer.str();
+    std::vector<uint8_t> data((std::istreambuf_iterator<char>(file)),
+                              std::istreambuf_iterator<char>());
 
     file.close();
 
-    // Remove trailing newline characters
-    while (!message.empty() && (message.back() == '\n' || message.back() == '\r')) {
-        message.pop_back();
+    data = jpegres::add_restart_markers(data);
+
+    std::vector<std::vector<uint8_t>> payloads;
+
+    for (std::size_t i = 0; i < data.size(); i += payload_size) {
+        std::size_t chunk_size = std::min(payload_size, data.size() - i);
+
+        payloads.emplace_back(data.begin() + i, data.begin() + i + chunk_size);
     }
 
-    std::vector<uint8_t> payload(message.begin(), message.end());
-
-#if VERBOSE
-    std::cout << "[INPUT]" << std::endl;
-    std::cout << "\tFile: " << argv[1] << std::endl;
-#endif
-
-    return payload;
+    return payloads;
 }
 
 std::vector<std::complex<float>> TxPipeline::generate_samples(const std::vector<uint8_t>& payload) {

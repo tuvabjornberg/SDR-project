@@ -8,7 +8,8 @@
 
 class TxPipeline {
   public:
-    std::vector<uint8_t> file_reader(int argc, char* argv[]);
+    std::vector<std::vector<uint8_t>> file_reader(const std::string& filename,
+                                                  std::size_t payload_size);
     std::vector<std::complex<float>> generate_samples(const std::vector<uint8_t>& payload);
 
   private:
