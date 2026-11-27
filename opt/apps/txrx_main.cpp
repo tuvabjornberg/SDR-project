@@ -4,7 +4,6 @@
 #include "mac/preamble.h"
 // #include "pipeline/rx_pipeline.h"
 #include "helpers.h"
-#include "iq_recording.h"
 #include "pipeline/tx_pipeline.h"
 #include "radio/receiver.h"
 #include "radio/transmitter.h"
@@ -129,44 +128,6 @@ int run_loopback_test(const TestConfig& config, bool use_noise) {
             Bit errors:          359
             BER:                 2.61509 %
     */
-
-    return 0;
-}
-
-int run_replay_test(const std::string& recording_dir) {
-    TestConfig replay_config = load_metadata(recording_dir);
-
-    std::cout << "\n========== REPLAYING RECORDING ==========\n";
-    std::cout << "Label:        " << replay_config.label << '\n';
-    std::cout << "Mode:         " << replay_config.mode << '\n';
-    std::cout << "Packets:      " << replay_config.num_packets << '\n';
-    std::cout << "Payload size: " << replay_config.payload_size << '\n';
-
-    std::vector<std::vector<std::complex<float>>> captured_samples;
-    for (std::size_t ch = 0; ch < replay_config.rx_channels; ++ch) {
-        std::string filename = recording_dir + "/rx" + std::to_string(ch) + ".iq";
-
-        captured_samples.push_back(iq_recording::load_channel(filename));
-    }
-
-    auto transmitted_payloads =
-        iq_recording::load_transmitted_payloads(recording_dir + "/payloads.bin");
-
-    replay_config.num_packets = transmitted_payloads.size();
-
-    if (replay_config.mode == "siso") {
-        evaluate("RX0 only", true, false, replay_config, transmitted_payloads, captured_samples);
-    } else if (replay_config.mode == "simo") {
-        evaluate("RX0 only", true, false, replay_config, transmitted_payloads, captured_samples);
-        evaluate("RX1 only", false, true, replay_config, transmitted_payloads, captured_samples);
-        evaluate("RX0+RX1 (MRC)", true, true, replay_config, transmitted_payloads,
-                 captured_samples);
-    } else if (replay_config.mode == "mimo") {
-        // evaluate("RX0 only", true, false, replay_config, transmitted_payloads, captured_samples);
-        // evaluate("RX1 only", false, true, replay_config, transmitted_payloads, captured_samples);
-        evaluate("RX0+RX1 (MRC)", true, true, replay_config, transmitted_payloads,
-                 captured_samples);
-    }
 
     return 0;
 }

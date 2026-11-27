@@ -2,6 +2,7 @@
 // #include "common/config.h"
 #include "common/jpeg.h"
 #include "common/settings.h"
+#include "iq_recording.h"
 #include "mac/packet.h"
 #include "pipeline/rx_pipeline.h"
 #include "radio/receiver.h"
@@ -580,6 +581,44 @@ inline void evaluate(const char* name, bool use0, bool use1, const TestConfig& c
     }
 };
 
+inline int run_replay_test(const std::string& recording_dir) {
+    TestConfig replay_config = load_metadata(recording_dir);
+
+    std::cout << "\n========== REPLAYING RECORDING ==========\n";
+    std::cout << "Label:        " << replay_config.label << '\n';
+    std::cout << "Mode:         " << replay_config.mode << '\n';
+    std::cout << "Packets:      " << replay_config.num_packets << '\n';
+    std::cout << "Payload size: " << replay_config.payload_size << '\n';
+
+    std::vector<std::vector<std::complex<float>>> captured_samples;
+    for (std::size_t ch = 0; ch < replay_config.rx_channels; ++ch) {
+        std::string filename = recording_dir + "/rx" + std::to_string(ch) + ".iq";
+
+        captured_samples.push_back(iq_recording::load_channel(filename));
+    }
+
+    auto transmitted_payloads =
+        iq_recording::load_transmitted_payloads(recording_dir + "/payloads.bin");
+
+    replay_config.num_packets = transmitted_payloads.size();
+
+    if (replay_config.mode == "siso") {
+        evaluate("RX0 only", true, false, replay_config, transmitted_payloads, captured_samples);
+    } else if (replay_config.mode == "simo") {
+        evaluate("RX0 only", true, false, replay_config, transmitted_payloads, captured_samples);
+        evaluate("RX1 only", false, true, replay_config, transmitted_payloads, captured_samples);
+        evaluate("RX0+RX1 (MRC)", true, true, replay_config, transmitted_payloads,
+                 captured_samples);
+    } else if (replay_config.mode == "mimo") {
+        // evaluate("RX0 only", true, false, replay_config, transmitted_payloads, captured_samples);
+        // evaluate("RX1 only", false, true, replay_config, transmitted_payloads, captured_samples);
+        evaluate("RX0+RX1 (MRC)", true, true, replay_config, transmitted_payloads,
+                 captured_samples);
+    }
+
+    return 0;
+}
+
 enum class Node { TX, RX, TXRX };
 
 inline void print_option(const std::string& option, const std::string& description) {
@@ -594,9 +633,9 @@ inline void print_options(Node node) {
         break;
 
     case Node::RX:
-        std::cout
-            << "Usage: ./receiver --rx-serial <RX_SERIAL> "
-               "--rx-channels <number> --tx_channels <1 or 2> --label <text> --input <number>\n";
+        std::cout << "Usage: ./receiver --rx-serial <RX_SERIAL> "
+                     "--rx-channels <number> --tx_channels <1 or 2> --label <text> --input <number "
+                     "of packets>\n";
         break;
 
     case Node::TXRX:
@@ -632,6 +671,8 @@ inline void print_options(Node node) {
         print_option("--tx-channels <number>",
                      "Number of TX channels (only for logging siso, simo, mimo)");
         print_option("--label <text>", "Experiment name stored in every CSV row");
+        print_option("--input <number of packets>",
+                     "The number of packets transmited, will decide capture time");
         // print_option("--packets <number>", "Number of packets for synthetic input"); //TODO: RX
         // needs packets to know how long it should listen for
         break;
@@ -653,7 +694,7 @@ inline void print_options(Node node) {
         print_option("--label <text>", "Experiment name stored in every CSV row");
         print_option("--input <filepath or number of packets>",
                      "The input file to transmit or the number of packets sent from the synthetic "
-                     "counter data)");
+                     "counter data");
         print_option("--output <filepath>", "CSV output directory (default: tests/outlog)");
         break;
     }

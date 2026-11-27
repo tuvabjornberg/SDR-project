@@ -19,6 +19,10 @@ int main(int argc, char** argv) {
     std::cout << "Packets:       " << config.num_packets << std::endl;
     std::cout << "Payload size:  " << config.payload_size << " bytes" << std::endl;
 
+    if (!config.replay_file.empty()) {
+        return run_replay_test(config.replay_file);
+    }
+    
     // Initialize TX SDR only
     auto tx = std::make_unique<Transmitter>(config.tx_serial, config.tx_channels);
 
